@@ -7,6 +7,16 @@ import UploadBooksPage from './pages/UploadBooksPage';
 import ChatbotPage from './pages/ChatbotPage';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import UserManagementPage from './pages/UserManagementPage';
+
+// Integration in src/App.jsx:
+
+import Loader from './components/Loader';
+import NotFoundPage from './pages/NotFoundPage';
+import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/SettingsPage';
+import HelpPage from './pages/HelpPage';
+import ContactPage from './pages/ContactPage';
+
 import { HiSparkles } from 'react-icons/hi';
 
 export default function App() {
@@ -48,7 +58,11 @@ export default function App() {
                 <Route path="/analytics" element={<AnalyticsDashboard />} />
                 <Route path="/admin" element={<UserManagementPage />} />
 
-           
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/help" element={<HelpPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="*" element={<NotFoundPage />} />
 
               </>
             )}
