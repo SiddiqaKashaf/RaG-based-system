@@ -51,8 +51,8 @@ export default function ChatbotPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto mt-10 p-6 rounded-3xl shadow-lg 
-      bg-white dark:bg-white/10 dark:backdrop-blur-lg dark:shadow-md dark:ring-1 dark:ring-white/20">
+    <div className="max-w-3xl mx-auto mt-10 p-8 rounded-3xl shadow-lg
+      bg-white dark:bg-indigo-500/5 dark:backdrop-blur-lg dark:shadow-md dark:ring-1 dark:ring-white/20">
 
       <h1 className="text-2xl font-bold mb-4 flex items-center gap-2 
         text-gray-800 dark:text-white">

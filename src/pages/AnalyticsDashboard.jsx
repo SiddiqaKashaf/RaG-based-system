@@ -70,7 +70,8 @@ export default function AnalyticsDashboard() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto bg-white dark:bg-white/5 p-8 rounded-3xl shadow-lg mt-10">
+    // <div className="max-w-3xl mx-auto mt-10 p-8 rounded-3xl shadow-lg  bg-white dark:bg-indigo-500/5 dark:backdrop-blur-lg dark:shadow-md dark:ring-1 dark:ring-white/20"
+    <div className="max-w-5xl mx-auto bg-whitedark:bg-indigo-500/5 dark:backdrop-blur-lg dark:shadow-md dark:ring-1 dark:ring-white/20 p-8 rounded-3xl shadow-lg mt-10">
       <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-6 flex items-center gap-2">
         <HiOutlineChartBar className="text-indigo-500" /> Analytics Dashboard
       </h1>

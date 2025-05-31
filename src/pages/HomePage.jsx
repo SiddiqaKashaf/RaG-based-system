@@ -120,10 +120,12 @@ export default function HomePage() {
     <motion.div
       key={key}
       whileHover={{ scale: 1.05 }}
+
+      
       className={`
+
         flex flex-col items-center rounded-xl shadow-lg p-6 transition-all duration-300
-        bg-white text-gray-800 
-        dark:bg-gradient-to-br dark:from-teal-700 dark:to-purple-800 dark:text-white
+       bg-white dark:bg-indigo-500/5 dark:backdrop-blur-lg dark:shadow-md dark:ring-1 dark:ring-white/20"
       `}
     >
       <span className="text-3xl font-bold text-indigo-600 dark:text-white">

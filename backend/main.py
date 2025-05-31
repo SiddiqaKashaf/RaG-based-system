@@ -7,6 +7,9 @@ from pydantic import BaseModel, EmailStr
 import sqlite3
 from typing import Generator, Optional
 import bcrypt
+import shutil
+import imghdr
+import re
 import jwt
 from jwt import ExpiredSignatureError, InvalidTokenError
 import os
@@ -23,9 +26,9 @@ app.add_middleware(
 )
 
 # Static files for avatars
-AVATAR_DIR = "static/avatars"
+AVATAR_DIR = "public/static/avatars"
 os.makedirs(AVATAR_DIR, exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="public/static"), name="static")
 
 # JWT secret key
 SECRET_KEY = os.getenv('SECRET_KEY', 'your_secret_key_here')
@@ -210,12 +213,28 @@ def update_profile(
     db: sqlite3.Connection = Depends(get_db)
 ):
     cursor = db.cursor()
+
     if avatar:
-        avatar_filename = f"{current_user['id']}_{avatar.filename}"
+        # Check image type before saving
+        contents = avatar.file.read()
+        avatar.file.seek(0)  # Reset file pointer after reading
+
+        img_type = imghdr.what(None, h=contents)
+        if img_type not in ("jpeg", "png", "jpg", "gif"):
+            raise HTTPException(status_code=400, detail="Unsupported avatar image type")
+
+        # Sanitize filename: remove any non-alphanumeric or dots/hyphens/underscores
+        safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", avatar.filename)
+        avatar_filename = f"{current_user['id']}_{safe_filename}"
         avatar_path = os.path.join(AVATAR_DIR, avatar_filename)
+
+        # Save file safely
         with open(avatar_path, "wb") as f:
-            f.write(avatar.file.read())
-        cursor.execute("UPDATE users SET avatar_url = ? WHERE id = ?", (f"static/avatars/{avatar_filename}", current_user["id"]))
+            shutil.copyfileobj(avatar.file, f)
+
+        avatar_url = f"static/avatars/{avatar_filename}"  # NO leading slash here for consistency
+        cursor.execute("UPDATE users SET avatar_url = ? WHERE id = ?", (avatar_url, current_user["id"]))
+
     cursor.execute("""
         UPDATE users
         SET role = COALESCE(?, role),
@@ -223,5 +242,7 @@ def update_profile(
             phone = COALESCE(?, phone)
         WHERE id = ?
     """, (role, department, phone, current_user["id"]))
+
     db.commit()
-    return
+    
+

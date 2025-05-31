@@ -97,7 +97,8 @@ export default function UserManagementPage() {
   const displayedUsers = filteredUsers.slice((page - 1) * pageSize, page * pageSize);
 
   return (
-    <div className="max-w-6xl mx-auto bg-white dark:bg-white/10 p-8 rounded-3xl shadow-lg mt-10">
+    <div className="max-w-3xl mx-auto mt-10 p-8 rounded-3xl shadow-lg
+      bg-white dark:bg-indigo-500/5 dark:backdrop-blur-lg dark:shadow-md dark:ring-1 dark:ring-white/20">
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={() => navigate(-1)}
@@ -105,8 +106,8 @@ export default function UserManagementPage() {
         >
           <HiOutlineArrowLeft className="text-xl" /> Back
         </button>
-        <h1 className="text-3xl font-semibold text-gray-800 dark:text-indigo-100 flex items-center gap-2">
-          <HiOutlineUserGroup className="text-indigo-500 dark:text-indigo-400" /> User Management
+        <h1 className="text-3xl font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+          <HiOutlineUserGroup className="text-indigo-500 dark:text-indigo-500" /> User Management
         </h1>
         <div className="w-12" /> {/* spacing placeholder */}
       </div>
