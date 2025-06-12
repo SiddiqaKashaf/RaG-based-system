@@ -25,7 +25,7 @@ export default function UserManagementPage() {
       try {
         const token = localStorage.getItem('token');
         const res = await axios.get('http://localhost:8000/admin/users', {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
         });
         setUsers(res.data.users);
         setFilteredUsers(res.data.users);
@@ -156,9 +156,7 @@ export default function UserManagementPage() {
                         <select
                           value={newRole}
                           onChange={e => setNewRole(e.target.value)}
-                          className="px-2 py-1 border rounded-lg focus:ring-2 focus:ring-indigo-400 
-             bg-white text-gray-800 dark:bg-indigo-900/70 dark:text-indigo-100 
-             dark:border-indigo-700"
+                          className="px-2 py-1 border rounded-lg focus:ring-2 focus:ring-indigo-400  bg-white text-gray-800 dark:bg-indigo-900/70 dark:text-indigo-100     dark:border-indigo-700"
                         >
                           <option
                             value="Admin"
@@ -167,16 +165,10 @@ export default function UserManagementPage() {
                             Admin
                           </option>
                           <option
-                            value="Analyst"
+                            value="Employee"
                             className="bg-white text-black dark:bg-indigo-900/10 dark:text-white"
                           >
-                            Analyst
-                          </option>
-                          <option
-                            value="Guest"
-                            className="bg-white text-black dark:bg-indigo-900/10 dark:text-white"
-                          >
-                            Guest
+                            Employee
                           </option>
                         </select>
 
@@ -186,12 +178,10 @@ export default function UserManagementPage() {
                     </td>
                     <td className="py-2 border-b flex items-center gap-3">
                       {editingId === u.id ? (
-                        <button
-                          onClick={() => saveRole(u.id)}
-                          className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300"
-                        >
-                          Save
-                        </button>
+                        <>
+                          <button onClick={() => saveRole(u.id)} className="text-green-600">Save</button>
+                          <button onClick={() => setEditingId(null)} className="text-gray-600 ml-2">Cancel</button>
+                        </>
                       ) : (
                         <HiOutlinePencilAlt
                           className="cursor-pointer text-gray-600 hover:text-indigo-600 dark:text-indigo-300 dark:hover:text-indigo-100"

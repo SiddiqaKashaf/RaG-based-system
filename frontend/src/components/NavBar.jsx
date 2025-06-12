@@ -6,13 +6,19 @@ import {
   HiSparkles,
   HiSun,
   HiMoon,
-  HiMenu
+  HiMenu,
+  HiArrowLeft
 } from 'react-icons/hi';
 import {
   FiUser,
   FiSettings,
   FiBell,
-  FiInfo
+  FiInfo,
+  FiUpload,
+  FiHome,
+  FiBarChart2,
+  FiUsers,
+  FiPhone
 } from 'react-icons/fi';
 
 export default function NavBar({
@@ -22,45 +28,44 @@ export default function NavBar({
   navOpen,
   setNavOpen,
   handleLogout,
-  user  // <-- user prop received
+  user
 }) {
+  const avatarUrl = user?.avatarUrl || '/static/avatars/avatar1.jpg';
 
-  // Get avatar URL from user or fallback to default
-  const avatarUrl = user?.avatarUrl || '/static/avatars/avatar1.jpg';  
-
-  // animations
   const slideDown = {
     hidden: { y: -20, opacity: 0 },
     visible: { y: 0, opacity: 1 },
     exit: { y: -20, opacity: 0 }
   };
+
   const mobileMenu = {
     open: { height: 'auto', opacity: 1 },
     closed: { height: 0, opacity: 0 }
   };
 
-  // Navigation links
   const links = !isLoggedIn
     ? [
         { to: '/', label: 'Login' },
         { to: '/signup', label: 'Sign Up', button: true }
       ]
     : [
-        { to: '/', label: 'Home' },
-        { to: '/upload', label: 'Upload' },
-        { to: '/chatbot', label: 'Chatbot' },
-        { to: '/analytics', label: 'Analytics' },
-        { to: '/admin', label: 'Users' },
-        { to: '/contact', label: 'Contact' },
-        { to: '/about', icon: <FiInfo size={18} /> },
-        { to: '/notifications', icon: <FiBell size={18} /> },
-        { to: '/settings', icon: <FiSettings size={18} /> },
+        { to: '/', label: 'Home', icon: <FiHome size={18} />, title: 'Home' },
+        { to: '/upload', label: 'Upload', icon: <FiUpload size={18} />, title: 'Upload Documents' },
+        { to: '/chatbot', label: 'Chatbot', icon: <HiSparkles size={18} />, title: 'Chatbot Assistant' },
+        { to: '/analytics', label: 'Analytics', icon: <FiBarChart2 size={18} />, title: 'Analytics Dashboard' },
+        { to: '/admin', label: 'Users', icon: <FiUsers size={18} />, title: 'User Management' },
+        { to: '/contact', label: 'Contact', icon: <FiPhone size={18} />, title: 'Contact Support' },
+        { to: '/about', icon: <FiInfo size={18} />, title: 'About' },
+        { to: '/notifications', icon: <FiBell size={18} />, title: 'Notifications' },
+        { to: '/settings', icon: <FiSettings size={18} />, title: 'Settings' },
         {
           to: '/profile',
+          title: 'Profile',
           customRender: (
             <img
               src={`http://localhost:8000${avatarUrl}`}
               alt="Profile"
+              title="Profile"
               className="h-8 w-8 rounded-full object-cover"
               loading="lazy"
               draggable={false}
@@ -86,28 +91,39 @@ export default function NavBar({
       >
         <div className="container mx-auto flex items-center justify-between p-4">
 
-          {/* Brand */}
-          <Link
-            to="/"
-            className={`flex items-center text-2xl font-bold ${
-              dark ? 'text-white' : 'text-gray-900'
-            }`}
-          >
-            <HiSparkles
-              className={`w-6 h-6 mr-2 transition-colors duration-300 ${
-                dark ? 'text-yellow-300' : 'text-indigo-600'
+          {/* Left: Back Button + Brand */}
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => window.history.back()}
+              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition"
+              title="Go Back"
+              aria-label="Go Back"
+            >
+              <HiArrowLeft size={20} className={dark ? 'text-white' : 'text-gray-800'} />
+            </button>
+
+            <Link
+              to="/"
+              className={`flex items-center text-2xl font-bold ${
+                dark ? 'text-white' : 'text-gray-900'
               }`}
-            />
-            RAG System
-          </Link>
+            >
+              <HiSparkles
+                className={`w-6 h-6 mr-2 transition-colors duration-300 ${
+                  dark ? 'text-yellow-300' : 'text-indigo-600'
+                }`}
+              />
+              RAG System
+            </Link>
+          </div>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex md:items-center md:space-x-6">
-            {/* Theme toggle */}
             <button
               onClick={() => setDark((d) => !d)}
               className="p-2 rounded-full transition-colors duration-300"
               aria-label="Toggle Theme"
+              title="Toggle Theme"
             >
               {dark ? (
                 <HiSun size={20} className="text-yellow-300 animate-pulse" />
@@ -121,6 +137,7 @@ export default function NavBar({
                 <button
                   key={i}
                   onClick={item.action}
+                  title={item.title}
                   className={`px-4 py-2 rounded-full transition-colors duration-300 ${
                     item.danger
                       ? 'bg-red-500 text-white hover:bg-red-600'
@@ -135,6 +152,7 @@ export default function NavBar({
                 <Link
                   key={i}
                   to={item.to}
+                  title={item.title}
                   className={`flex items-center justify-center transition-colors duration-300 ${
                     item.button
                       ? dark
@@ -155,7 +173,7 @@ export default function NavBar({
             )}
           </div>
 
-          {/* Mobile menu button */}
+          {/* Mobile Menu Toggle */}
           <div className="md:hidden">
             <button
               onClick={() => setNavOpen((o) => !o)}
@@ -167,7 +185,7 @@ export default function NavBar({
           </div>
         </div>
 
-        {/* Mobile Menu (animated) */}
+        {/* Mobile Menu */}
         <AnimatePresence>
           {navOpen && (
             <motion.div
@@ -178,7 +196,6 @@ export default function NavBar({
               className="md:hidden overflow-hidden"
             >
               <div className="flex flex-col space-y-2 p-4">
-                {/* Theme toggle */}
                 <button
                   onClick={() => setDark((d) => !d)}
                   className="self-end p-2 rounded-full transition-colors duration-300"
@@ -213,6 +230,7 @@ export default function NavBar({
                     <Link
                       key={i}
                       to={item.to}
+                      title={item.title}
                       onClick={() => setNavOpen(false)}
                       className={`block px-4 py-2 rounded-full transition-colors duration-300 ${
                         item.button

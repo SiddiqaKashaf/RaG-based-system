@@ -7,11 +7,9 @@ import {
   Navigate
 } from 'react-router-dom';
 
-// Toast notifications
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-// Components & Pages
 import NavBar from './components/NavBar';
 import Loader from './components/Loader';
 import LoginPage from './pages/LoginPage';
@@ -28,14 +26,14 @@ import NotificationsPage from './pages/NotificationPage';
 import {
   UserProfilePage,
   NotFoundPage,
-} from './pages/ExtraPages';
+} from './pages/ProfilePage';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [dark, setDark] = useState(() => localStorage.getItem('theme') === 'dark');
   const [navOpen, setNavOpen] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState(""); // NEW state for avatar URL
+  const [user, setUser] = useState(null); // Updated: store full user info instead of just avatar
 
   // Persist & apply theme
   useEffect(() => {
@@ -43,70 +41,54 @@ export default function App() {
     document.documentElement.classList.toggle('dark', dark);
   }, [dark]);
 
-  // Fetch current user profile to get avatar URL after login
-  // useEffect(() => {
-  //   if (isLoggedIn) {
-  //     // Replace base URL with your backend URL if different
-  //     fetch('http://localhost:8000/api/profile', {
-  //       headers: {
-  //         Authorization: `Bearer ${localStorage.getItem('access_token')}` // Assumes token stored here after login
-  //       }
-  //     })
-  //       .then(res => {
-  //         if (!res.ok) throw new Error('Failed to fetch profile');
-  //         return res.json();
-  //       })
-  //       .then(data => {
-  //         // Backend returns avatarUrl like "/static/avatars/xyz.png"
-  //         setAvatarUrl(data.avatarUrl || "");
-  //       })
-  //       .catch(() => {
-  //         setAvatarUrl("");
-  //         toast.error('Could not load profile picture');
-  //       });
-  //   } else {
-  //     setAvatarUrl(""); // Clear avatar on logout
-  //   }
-  // }, [isLoggedIn]);
+  // Fetch user profile after login
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetch('http://localhost:8000/api/profile', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to fetch profile');
+          return res.json();
+        })
+        .then(data => {
+          setUser(data); // store full user data (including avatarUrl)
+        })
+        .catch(() => {
+          setUser(null);
+          toast.error('Could not load profile picture');
+        });
+    } else {
+      setUser(null); // Clear user on logout
+    }
+  }, [isLoggedIn]);
 
-  // Simulated login/logout
   const handleLogin = () => {
     setLoading(true);
     setTimeout(() => {
       setIsLoggedIn(true);
-        
-
-      fetch('http://localhost:8000/api/profile', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`
-       
-        }
-        
-      })
-
-
       setLoading(false);
       toast.success('Logged in successfully!');
     }, 800);
   };
+
   const handleLogout = () => {
     setIsLoggedIn(false);
-    setAvatarUrl("");
-    localStorage.removeItem('access_token'); // Remove token on logout
+    setUser(null);
+    localStorage.removeItem('access_token');
     toast.info('Logged out.');
   };
 
   return (
     <Router>
       <ToastContainer position="top-right" autoClose={2000} />
-
-      {/* Theme wrapper */}
       <div className={`min-h-screen transition-colors duration-500 ${dark
         ? 'bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e] text-white'
         : 'bg-gradient-to-br from-[#f8f9fa] via-[#e0e0e0] to-[#ffffff] text-gray-900'
         }`}>
 
-        {/* NavBar component with avatarUrl prop */}
         <NavBar
           isLoggedIn={isLoggedIn}
           dark={dark}
@@ -114,10 +96,9 @@ export default function App() {
           navOpen={navOpen}
           setNavOpen={setNavOpen}
           handleLogout={handleLogout}
-          avatarUrl={avatarUrl}  // <-- new prop here
+          user={user} // pass full user object instead of avatarUrl
         />
 
-        {/* Main content */}
         <main className="container mx-auto px-4 py-8">
           {loading ? (
             <Loader />

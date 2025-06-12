@@ -1,4 +1,3 @@
-// src/pages/HomePage.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -35,16 +34,16 @@ export default function HomePage() {
     activeUsers: 0
   });
 
-  // Decode role from token
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token && token.split('.').length === 3) {
-      const { role } = decodeToken(token);
+      const decoded = decodeToken(token);
+      console.log('Decoded token:', decoded); // Debug log
+      const { role } = decoded;
       if (role) setRole(role);
     }
   }, []);
 
-  // Simulate metrics fetch
   useEffect(() => {
     setMetrics({ documentsProcessed: 128, queriesToday: 54, activeUsers: 12 });
   }, []);
@@ -73,17 +72,17 @@ export default function HomePage() {
     },
     {
       title: 'User Management',
-      path: role === 'Admin' ? '/admin' : '#',
-      icon: role === 'Admin'
+      path: role?.toLowerCase() === 'admin' ? '/admin' : '#',
+      icon: role?.toLowerCase() === 'admin'
         ? <HiOutlineUserGroup size={36} />
         : <HiOutlineLockClosed size={36} />,
-      description: role === 'Admin'
+      description: role?.toLowerCase() === 'admin'
         ? 'Manage application users'
         : 'Admins only',
-      gradient: role === 'Admin'
+      gradient: role?.toLowerCase() === 'admin'
         ? 'from-red-500 to-red-600'
         : 'from-gray-300 to-gray-400',
-      disabled: role !== 'Admin'
+      disabled: role?.toLowerCase() !== 'admin'
     }
   ];
 
@@ -113,75 +112,61 @@ export default function HomePage() {
         )}
       </motion.div>
 
-
-        {/* metrics */}
-     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
-  {Object.entries(metrics).map(([key, value]) => (
-    <motion.div
-      key={key}
-      whileHover={{ scale: 1.05 }}
-
-      
-      className={`
-
-        flex flex-col items-center rounded-xl shadow-lg p-6 transition-all duration-300
-       bg-white dark:bg-indigo-500/5 dark:backdrop-blur-lg dark:shadow-md dark:ring-1 dark:ring-white/20"
-      `}
-    >
-      <span className="text-3xl font-bold text-indigo-600 dark:text-white">
-        {value}
-      </span>
-      <span className="mt-2 uppercase text-sm text-gray-600 dark:text-gray-200">
-        {key.replace(/([A-Z])/g, ' $1')}
-      </span>
-    </motion.div>
-  ))}
-</div>
-
-
-
-
-
-
-{/* Feature Cards */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-  {features.map(feat => {
-    const cardContent = (
-      <motion.div
-        whileHover={{ y: -5 }}
-        className={`relative block rounded-2xl p-6 text-white shadow-xl transition-transform ${
-          feat.disabled ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''
-        }`}
-      >
-        {/* Gradient background */}
-        <div
-          className={`absolute inset-0 bg-gradient-to-br ${feat.gradient} rounded-2xl`}
-        />
-        <div className="relative z-10 flex flex-col h-full">
-          <div className="bg-white bg-opacity-30 p-3 rounded-full mb-4">
-            {feat.icon}
-          </div>
-          <h2 className="text-xl font-semibold mb-1">{feat.title}</h2>
-          <p className="text-sm mb-4 opacity-90">{feat.description}</p>
-          {!feat.disabled && (
-            <span className="mt-auto inline-block px-4 py-2 bg-white bg-opacity-90 text-indigo-600 rounded-lg font-medium hover:bg-opacity-100 transition">
-              Explore →
+      {/* Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+        {Object.entries(metrics).map(([key, value]) => (
+          <motion.div
+            key={key}
+            whileHover={{ scale: 1.05 }}
+            className="flex flex-col items-center rounded-xl shadow-lg p-6 transition-all duration-300 bg-white dark:bg-indigo-500/5 dark:backdrop-blur-lg dark:shadow-md dark:ring-1 dark:ring-white/20"
+          >
+            <span className="text-3xl font-bold text-indigo-600 dark:text-white">
+              {value}
             </span>
-          )}
-        </div>
-      </motion.div>
-    );
+            <span className="mt-2 uppercase text-sm text-gray-600 dark:text-gray-200">
+              {key.replace(/([A-Z])/g, ' $1')}
+            </span>
+          </motion.div>
+        ))}
+      </div>
 
-    return feat.disabled ? (
-      <div key={feat.title}>{cardContent}</div>
-    ) : (
-      <Link to={feat.path} key={feat.title}>
-        {cardContent}
-      </Link>
-    );
-  })}
-</div>
+      {/* Feature Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        {features.map(feat => {
+          const cardContent = (
+            <motion.div
+              whileHover={{ y: -5 }}
+              className={`relative block rounded-2xl p-6 text-white shadow-xl transition-transform ${
+                feat.disabled ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''
+              }`}
+            >
+              <div
+                className={`absolute inset-0 bg-gradient-to-br ${feat.gradient} rounded-2xl`}
+              />
+              <div className="relative z-10 flex flex-col h-full">
+                <div className="bg-white bg-opacity-30 p-3 rounded-full mb-4">
+                  {feat.icon}
+                </div>
+                <h2 className="text-xl font-semibold mb-1">{feat.title}</h2>
+                <p className="text-sm mb-4 opacity-90">{feat.description}</p>
+                {!feat.disabled && (
+                  <span className="mt-auto inline-block px-4 py-2 bg-white bg-opacity-90 text-indigo-600 rounded-lg font-medium hover:bg-opacity-100 transition">
+                    Explore →
+                  </span>
+                )}
+              </div>
+            </motion.div>
+          );
 
+          return feat.disabled ? (
+            <div key={feat.title}>{cardContent}</div>
+          ) : (
+            <Link to={feat.path} key={feat.title}>
+              {cardContent}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

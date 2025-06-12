@@ -3,16 +3,17 @@ from fastapi import FastAPI, HTTPException, Depends, Security, File, UploadFile,
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, EmailStr
 import sqlite3
 from typing import Generator, Optional
-import bcrypt
 import shutil
 import imghdr
 import re
 import jwt
 from jwt import ExpiredSignatureError, InvalidTokenError
 import os
+# Import your auth router
+from backend.routes.auth import router as auth_router
+
 
 app = FastAPI()
 
@@ -25,10 +26,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static files for avatars
-AVATAR_DIR = "public/static/avatars"
+app.include_router(auth_router)
+# Static files for avatars inside backend folder
+BASE_DIR = os.path.dirname(__file__)
+AVATAR_DIR = os.path.join(BASE_DIR, "public", "static", "avatars")
 os.makedirs(AVATAR_DIR, exist_ok=True)
-app.mount("/static", StaticFiles(directory="public/static"), name="static")
+
+app.mount(
+    "/static",
+    StaticFiles(directory=os.path.join(BASE_DIR, "public", "static")),
+    name="static"
+)
 
 # JWT secret key
 SECRET_KEY = os.getenv('SECRET_KEY', 'your_secret_key_here')
@@ -50,16 +58,27 @@ def get_db() -> Generator:
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
+    # Table for organizations
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS organizations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL
+        )
+    """)
+
+    # Table for users (linked to orgs)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT NOT NULL UNIQUE,
+            email TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            name TEXT DEFAULT '',
-            role TEXT DEFAULT 'Guest',
+            name TEXT NOT NULL,
+            role TEXT NOT NULL CHECK (role IN ('admin', 'employee')),
             department TEXT DEFAULT '',
             phone TEXT DEFAULT '',
-            avatar_url TEXT DEFAULT ''
+            avatar_url TEXT DEFAULT '',
+            organization_id INTEGER,
+            FOREIGN KEY (organization_id) REFERENCES organizations (id)
         )
     """)
     conn.commit()
@@ -67,28 +86,7 @@ def init_db():
 
 init_db()
 
-# Pydantic models
-class SignupModel(BaseModel):
-    email: EmailStr
-    password: str
-    name: str = ""
-
-class LoginModel(BaseModel):
-    email: EmailStr
-    password: str
-
-# Authentication and user helpers
-def verify_admin_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    try:
-        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=["HS256"])
-        if payload.get("role") != "Admin":
-            raise HTTPException(status_code=403, detail="Not authorized")
-        return payload
-    except ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
+# Dependency to get current user
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: sqlite3.Connection = Depends(get_db)
@@ -105,58 +103,21 @@ def get_current_user(
         raise HTTPException(status_code=404, detail="User not found")
     return {"id": row[0], "email": row[1], "name": row[2] or "", "role": row[3]}
 
-# Signup
-@app.post("/signup")
-def signup(user: SignupModel, db: sqlite3.Connection = Depends(get_db)):
-    hashed_password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt())
+def verify_admin_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
-        cursor = db.cursor()
-        cursor.execute(
-            "INSERT INTO users (email, password, name) VALUES (?, ?, ?)",
-            (user.email, hashed_password, user.name)
-        )
-        db.commit()
-        return {"message": "Signup successful"}
-    except sqlite3.IntegrityError:
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-# Login
-@app.post("/login")
-def login(user: LoginModel, db: sqlite3.Connection = Depends(get_db)):
-    cursor = db.cursor()
-    cursor.execute(
-        "SELECT id, password, role, name FROM users WHERE email = ?",
-        (user.email,)
-    )
-    row = cursor.fetchone()
-
-    if row:
-        user_id, hashed_password, role, name = row
-
-        # Check hashed password
-        if bcrypt.checkpw(user.password.encode('utf-8'), hashed_password):
-
-            # Generate JWT token with user info
-            token = jwt.encode(
-                {"id": user_id, "email": user.email, "role": role, "name": name},
-                SECRET_KEY,
-                algorithm="HS256"
-            )
-
-            return {
-                "message": "Login successful",
-                "access_token": token,
-                "user": {
-                    "id": user_id,
-                    "email": user.email,
-                    "name": name,
-                    "role": role
-                }
-            }
-
-    raise HTTPException(status_code=401, detail="Invalid credentials")
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=["HS256"])
+        if payload.get("role", "").lower() != "admin":  # Fix here
+            raise HTTPException(status_code=403, detail="Not authorized")
+        return payload
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 
+
+# Include auth router
+app.include_router(auth_router)
 
 # Admin-only routes
 @app.get("/admin/users")
@@ -168,15 +129,19 @@ def list_users(db: sqlite3.Connection = Depends(get_db), admin=Depends(verify_ad
 
 @app.patch("/admin/users/{user_id}/role")
 def update_user_role(user_id: int, payload: dict, db: sqlite3.Connection = Depends(get_db), admin=Depends(verify_admin_token)):
-    new_role = payload.get("role")
-    if new_role not in ("Admin", "Analyst", "Guest"):
-        raise HTTPException(status_code=400, detail="Invalid role")
+    new_role = payload.get("role", "").strip().lower()  # Normalize input
+    if new_role not in ("admin", "employee"):
+        raise HTTPException(status_code=400, detail="Invalid role. Only 'admin' or 'employee' allowed.")
+    
     cursor = db.cursor()
     cursor.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
     if cursor.rowcount == 0:
         raise HTTPException(status_code=404, detail="User not found")
     db.commit()
     return {"message": "Role updated"}
+
+
+
 
 @app.delete("/admin/users/{user_id}")
 def delete_user(user_id: int, db: sqlite3.Connection = Depends(get_db), admin=Depends(verify_admin_token)):
@@ -214,25 +179,26 @@ def update_profile(
 ):
     cursor = db.cursor()
 
-    if avatar:
-        # Check image type before saving
-        contents = avatar.file.read()
-        avatar.file.seek(0)  # Reset file pointer after reading
+    if role:
+        role = role.strip().lower()
+        if role not in ("admin", "employee"):
+            raise HTTPException(status_code=400, detail="Invalid role. Only 'admin' or 'employee' allowed.")
 
+    if avatar:
+        contents = avatar.file.read()
+        avatar.file.seek(0)
         img_type = imghdr.what(None, h=contents)
         if img_type not in ("jpeg", "png", "jpg", "gif"):
             raise HTTPException(status_code=400, detail="Unsupported avatar image type")
 
-        # Sanitize filename: remove any non-alphanumeric or dots/hyphens/underscores
         safe_filename = re.sub(r"[^a-zA-Z0-9._-]", "_", avatar.filename)
         avatar_filename = f"{current_user['id']}_{safe_filename}"
         avatar_path = os.path.join(AVATAR_DIR, avatar_filename)
 
-        # Save file safely
         with open(avatar_path, "wb") as f:
             shutil.copyfileobj(avatar.file, f)
 
-        avatar_url = f"static/avatars/{avatar_filename}"  # NO leading slash here for consistency
+        avatar_url = f"static/avatars/{avatar_filename}"
         cursor.execute("UPDATE users SET avatar_url = ? WHERE id = ?", (avatar_url, current_user["id"]))
 
     cursor.execute("""
@@ -244,5 +210,4 @@ def update_profile(
     """, (role, department, phone, current_user["id"]))
 
     db.commit()
-    
 
