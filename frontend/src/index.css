@@ -1,3 +1,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Force Recharts axis labels to be visible in both themes */
+.recharts-cartesian-axis-tick-value {
+  fill: #1F2937 !important; /* Tailwind gray-800, very dark for light theme */
+  font-weight: 500;
+}
+html[class~='dark'] .recharts-cartesian-axis-tick-value, body.dark .recharts-cartesian-axis-tick-value {
+  fill: #E5E7EB !important; /* Tailwind gray-200 for dark mode */
+}

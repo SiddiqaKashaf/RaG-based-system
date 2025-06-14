@@ -1,7 +1,6 @@
 /// src/App.jsx
 import React, { useState, useEffect } from 'react';
 import {
-  BrowserRouter as Router,
   Routes,
   Route,
   Navigate
@@ -15,18 +14,15 @@ import Loader from './components/Loader';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import HomePage from './pages/HomePage';
-import UploadBooksPage from './pages/UploadBooksPage';
 import ChatbotPage from './pages/ChatbotPage';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import UserManagementPage from './pages/UserManagementPage';
 import ContactPage from './pages/ContactPage';
 import CompanySettingsPage from './pages/CompanySettingsPage';
 import AboutPage from './pages/AboutPage';
-import NotificationsPage from './pages/NotificationPage';
-import {
-  UserProfilePage,
-  NotFoundPage,
-} from './pages/ProfilePage';
+import NotificationPage from './pages/NotificationPage';
+import ProfilePage from './pages/ProfilePage';
+import PrivateRoute from './components/PrivateRoute';
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -82,7 +78,7 @@ export default function App() {
   };
 
   return (
-    <Router>
+    <>
       <ToastContainer position="top-right" autoClose={2000} />
       <div className={`min-h-screen transition-colors duration-500 ${dark
         ? 'bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e] text-white'
@@ -96,7 +92,7 @@ export default function App() {
           navOpen={navOpen}
           setNavOpen={setNavOpen}
           handleLogout={handleLogout}
-          user={user} // pass full user object instead of avatarUrl
+          user={user}
         />
 
         <main className="container mx-auto px-4 py-8">
@@ -112,23 +108,23 @@ export default function App() {
                 </>
               ) : (
                 <>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/upload" element={<UploadBooksPage />} />
-                  <Route path="/chatbot" element={<ChatbotPage />} />
-                  <Route path="/analytics" element={<AnalyticsDashboard />} />
-                  <Route path="/admin" element={<UserManagementPage />} />
-                  <Route path="/profile" element={<UserProfilePage />} />
-                  <Route path="/settings" element={<CompanySettingsPage />} />
-                  <Route path="/about" element={<AboutPage />} />
-                  <Route path="/contact" element={<ContactPage />} />
-                  <Route path="/notifications" element={<NotificationsPage />} />
-                  <Route path="*" element={<NotFoundPage />} />
+                  <Route path="/" element={<PrivateRoute><HomePage /></PrivateRoute>} />
+                  <Route path="/chatbot" element={<PrivateRoute><ChatbotPage /></PrivateRoute>} />
+                  <Route path="/analytics" element={<PrivateRoute><AnalyticsDashboard /></PrivateRoute>} />
+                  <Route path="/admin" element={<PrivateRoute><UserManagementPage /></PrivateRoute>} />
+                  <Route path="/admin/users" element={<PrivateRoute><UserManagementPage /></PrivateRoute>} />
+                  <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
+                  <Route path="/settings" element={<PrivateRoute><CompanySettingsPage /></PrivateRoute>} />
+                  <Route path="/about" element={<PrivateRoute><AboutPage /></PrivateRoute>} />
+                  <Route path="/contact" element={<PrivateRoute><ContactPage /></PrivateRoute>} />
+                  <Route path="/notifications" element={<PrivateRoute><NotificationPage /></PrivateRoute>} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
                 </>
               )}
             </Routes>
           )}
         </main>
       </div>
-    </Router>
+    </>
   );
 }

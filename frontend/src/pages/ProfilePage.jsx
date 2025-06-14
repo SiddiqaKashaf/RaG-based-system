@@ -96,17 +96,26 @@ export function UserProfilePage() {
       formData.append("avatar", profile.avatarFile);
     }
 
+    // Debug logging
+    console.log('Profile data being sent:', profile);
+    console.log('FormData contents:');
+    for (let pair of formData.entries()) {
+      console.log(pair[0] + ': ' + pair[1]);
+    }
+    console.log('Job Title specifically:', formData.get('jobTitle'));
+
     axios
       .put("/api/profile", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       })
-      .then(() => {
+      .then((response) => {
+        console.log('Server response:', response);
         toast.success("Profile updated successfully!");
         setEditMode(false);
         fetchProfile();
       })
       .catch((err) => {
-        console.error(err);
+        console.error('Error details:', err.response?.data);
         toast.error(
           `Update failed: ${
             err.response?.data?.detail || err.message || "Unknown error"
@@ -175,7 +184,10 @@ export function UserProfilePage() {
               {profile.name || "-"}
             </h1>
             <p className="text-lg text-indigo-600 dark:text-indigo-300">
-              {profile.jobTitle || profile.role || "-"}
+              {profile.jobTitle || "-"}
+            </p>
+            <p className="text-sm text-gray-600 dark:text-indigo-200">
+              {profile.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1) : "-"}
             </p>
           </div>
           
@@ -368,4 +380,8 @@ export function NotFoundPage() {
     </div>
   );
 }
+
+// Add default export
+const ProfilePage = UserProfilePage;
+export default ProfilePage;
 

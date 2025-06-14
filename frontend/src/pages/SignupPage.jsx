@@ -35,7 +35,7 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      await axios.post('http://localhost:8000/signup', {
+      await axios.post('http://localhost:8000/api/signup', {
         email,
         password,
         confirm_password: confirmPassword,

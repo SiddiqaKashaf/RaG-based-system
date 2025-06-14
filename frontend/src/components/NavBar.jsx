@@ -14,7 +14,6 @@ import {
   FiSettings,
   FiBell,
   FiInfo,
-  FiUpload,
   FiHome,
   FiBarChart2,
   FiUsers,
@@ -50,8 +49,7 @@ export default function NavBar({
       ]
     : [
         { to: '/', label: 'Home', icon: <FiHome size={18} />, title: 'Home' },
-        { to: '/upload', label: 'Upload', icon: <FiUpload size={18} />, title: 'Upload Documents' },
-        { to: '/chatbot', label: 'Chatbot', icon: <HiSparkles size={18} />, title: 'Chatbot Assistant' },
+        { to: '/chatbot', label: 'AI Assistant', icon: <HiSparkles size={18} />, title: 'AI Assistant (Chat & Document Search)' },
         { to: '/analytics', label: 'Analytics', icon: <FiBarChart2 size={18} />, title: 'Analytics Dashboard' },
         { to: '/admin', label: 'Users', icon: <FiUsers size={18} />, title: 'User Management' },
         { to: '/contact', label: 'Contact', icon: <FiPhone size={18} />, title: 'Contact Support' },
