@@ -17,10 +17,16 @@ import {
   HiOutlineUpload,
   HiOutlineBell,
   HiOutlineExclamationCircle,
-  HiOutlineQuestionMarkCircle
+  HiOutlineQuestionMarkCircle,
+  HiOutlineArrowRight,
+  HiOutlineDatabase,
+  HiOutlineCog,
+  HiOutlineShieldCheck,
+  HiOutlineChartPie
 } from 'react-icons/hi';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
+import { useTheme } from '../theme';
 
 // Helper to decode JWT payload
 function decodeToken(token) {
@@ -39,7 +45,10 @@ function decodeToken(token) {
   }
 }
 
+const SYSTEM_NAME = "DocThinker Enterprise"; // Updated system name
+
 export default function HomePage() {
+  const { getComponentClass, getGradient, getStatusClass, theme: themeConfig } = useTheme();
   const [role, setRole] = useState(null);
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(true);
@@ -59,6 +68,8 @@ export default function HomePage() {
     { user: 'Bob', action: 'Searched for "client list"', time: '3 hours ago' },
     { user: 'Admin', action: 'Added new user', time: 'yesterday' }
   ]);
+  const [orgStats] = useState({ users: 42, active: 37, uptime: '99.98%', pending: 1 });
+  const [personalStats] = useState({ queries: 12, uploads: 3, lastLogin: 'Today, 09:12 AM' });
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -72,34 +83,58 @@ export default function HomePage() {
 
   const features = [
     {
-      title: 'AI Assistant',
-      path: '/chatbot',
-      icon: <HiOutlineChatAlt2 size={28} />,
-      description: 'Chat with our AI assistant',
-      gradient: 'from-indigo-500 to-purple-600'
+      title: 'Enterprise Search',
+      path: '/search',
+      icon: <HiOutlineSearch size={24} />,
+      description: 'Advanced semantic search across your entire document repository',
+      gradient: 'search',
+      stats: 'Enterprise-grade'
     },
     {
-      title: 'Analytics Dashboard',
+      title: 'AI Assistant',
+      path: '/chatbot',
+      icon: <HiOutlineChatAlt2 size={24} />,
+      description: 'Intelligent document analysis and insights generation',
+      gradient: 'aiAssistant',
+      stats: 'Powered by GPT-4'
+    },
+    {
+      title: 'Analytics Hub',
       path: '/analytics',
-      icon: <HiOutlineChartBar size={28} />,
-      description: 'View usage analytics',
-      gradient: 'from-yellow-400 to-orange-400'
+      icon: <HiOutlineChartPie size={24} />,
+      description: 'Comprehensive analytics and business intelligence',
+      gradient: 'analytics',
+      stats: 'Real-time Insights'
+    },
+    {
+      title: 'Document Management',
+      path: '/documents',
+      icon: <HiOutlineDatabase size={24} />,
+      description: 'Secure document storage and management system',
+      gradient: 'documents',
+      stats: 'Enterprise Security'
     },
     {
       title: 'User Management',
       path: role === 'admin' ? '/admin/users' : '#',
-      icon: role === 'admin'
-        ? <HiOutlineUserGroup size={28} />
-        : <HiOutlineLockClosed size={28} />,
-      description: role === 'admin'
-        ? 'Manage users'
-        : 'Admins only',
-      gradient: role === 'admin'
-        ? 'from-red-500 to-red-600'
-        : 'from-gray-300 to-gray-400',
-      disabled: role !== 'admin'
+      icon: role === 'admin' ? <HiOutlineUserGroup size={24} /> : <HiOutlineLockClosed size={24} />,
+      description: role === 'admin' ? 'Advanced user and permission management' : 'Admin access required',
+      gradient: role === 'admin' ? 'userManagement' : 'disabled',
+      disabled: role !== 'admin',
+      stats: role === 'admin' ? 'Full Control' : 'Restricted'
+    },
+    {
+      title: 'System Settings',
+      path: role === 'admin' ? '/admin/settings' : '#',
+      icon: <HiOutlineCog size={24} />,
+      description: 'Configure system parameters and integrations',
+      gradient: 'settings',
+      stats: 'Customizable'
     }
   ];
+
+  // Remove Enterprise Search and System Settings from features
+  const filteredFeatures = features.filter(f => f.title !== 'Enterprise Search' && f.title !== 'System Settings');
 
   if (loading) {
     return (
@@ -110,127 +145,296 @@ export default function HomePage() {
   }
 
   return (
-    <div className="container mx-auto px-6 py-8">
-      {/* Hero Section: RAG System branding and tagline */}
-      <motion.div
+    <div className={`min-h-screen`}>
+      {/* Enterprise Header */}
+      <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.6 }}
-        className="text-center mb-6"
+        className={`${  getComponentClass('card', 'contactGlass')}`}
       >
-        <h1 className="text-5xl font-extrabold text-current">
-          RAG System for{' '}
-          <span className="text-indigo-800 dark:text-indigo-300">
-            Organizations
-          </span>
-        </h1>
-        <p className="mt-4 text-lg text-current/75 max-w-2xl mx-auto">
-          AI-powered Retrieval-Augmented Generation platform for secure document
-          search, chatbot assistance, and analytics.
-        </p>
+        <div className={`${themeConfig.spacing.container.maxWidth} mx-auto ${themeConfig.spacing.container.padding} py-4`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <motion.div 
+                whileHover={{ scale: 1.05 }}
+                className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-2xl font-bold text-white shadow-lg"
+              >
+                <span>{SYSTEM_NAME[0]}</span>
+              </motion.div>
+              <div>
+                <h1 className={getComponentClass('typography', 'h1')}>{SYSTEM_NAME}</h1>
+                <p className={getComponentClass('typography', 'caption')}>Enterprise Document Intelligence Platform</p>
+              </div>
+            </div>
+            {username && (
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center space-x-4"
+              >
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-800 dark:text-white">{username}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{role}</p>
+                </div>
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-medium">
+                  {username[0].toUpperCase()}
+                </div>
+              </motion.div>
+            )}
+          </div>
+        </div>
       </motion.div>
 
-      {/* Subtle Welcome and Role Badge */}
-      <div className="text-center mb-8">
-        {username && (
-          <div className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-1">
-            Welcome back, {username}!
+      <div className={`${themeConfig.spacing.container.maxWidth} mx-auto ${themeConfig.spacing.container.padding} ${themeConfig.spacing.section.padding}`}>
+        {/* Quick Stats */}
+        <div className={`grid grid-cols-1 md:grid-cols-4 ${themeConfig.spacing.card.gap} mb-8`}>
+          <motion.div 
+            whileHover={{ y: -4 }}
+            className={`${  getComponentClass('card', 'contactGlass')} ${themeConfig.spacing.card.padding}`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Documents</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">1,234</p>
+              </div>
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                <HiOutlineDocumentText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="flex items-center text-sm text-green-600 dark:text-green-400">
+                <span className="font-medium">+12.5%</span>
+                <span className="ml-2">from last month</span>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div 
+            whileHover={{ y: -4 }}
+            className={`${  getComponentClass('card', 'contactGlass')} ${themeConfig.spacing.card.padding}`}
+          >
+            <div className="flex items-center justify-between ">
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Active Users</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{orgStats.active}</p>
+              </div>
+              <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
+                <HiOutlineUserGroup className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="flex items-center text-sm text-green-600 dark:text-green-400">
+                <span className="font-medium">+8.2%</span>
+                <span className="ml-2">from last week</span>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div 
+            whileHover={{ y: -4 }}
+            className={`${  getComponentClass('card', 'contactGlass')} ${themeConfig.spacing.card.padding}`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">AI Queries</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">892</p>
+              </div>
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg">
+                <HiOutlineLightBulb className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="flex items-center text-sm text-green-600 dark:text-green-400">
+                <span className="font-medium">+23.1%</span>
+                <span className="ml-2">from last month</span>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div 
+            whileHover={{ y: -4 }}
+            className={`${  getComponentClass('card', 'contactGlass')} ${themeConfig.spacing.card.padding}`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">System Health</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{orgStats.uptime}</p>
+              </div>
+              <div className="p-3 bg-rose-50 dark:bg-rose-900/30 rounded-lg">
+                <HiOutlineShieldCheck className="w-6 h-6 text-rose-600 dark:text-rose-400" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="flex items-center text-sm text-green-600 dark:text-green-400">
+                <span className="font-medium">All Systems</span>
+                <span className="ml-2">operational</span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Feature Grid and Recent Activity Side by Side */}
+        <div className="flex flex-col lg:flex-row gap-8 mb-8">
+          {/* Feature Cards - left aligned, full width */}
+          <div className="flex-1">
+            <div className={`grid grid-cols-1 gap-6`}>
+              {filteredFeatures.map((feat, index) => {
+                const cardContent = (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ y: -4 }}
+                    className={`w-full min-h-[120px] p-3 ${getComponentClass('featureCard', 'base')} bg-gradient-to-br ${getGradient(feat.gradient)} ${
+                      feat.disabled ? getComponentClass('featureCard', 'disabled') : ''
+                    }`}
+                  >
+                    <div className="relative z-10 flex flex-col h-full">
+                      <div className={getComponentClass('featureCard', 'icon') + ' flex items-center gap-2 mb-2'}>
+                        {feat.icon}
+                        <h2 className="text-lg font-semibold">{feat.title}</h2>
+                      </div>
+                      <p className="text-sm mb-4 opacity-90">{feat.description}</p>
+                      {!feat.disabled && (
+                        <motion.div 
+                          whileHover={{ x: 4 }}
+                          className="mt-auto flex items-center justify-between"
+                        >
+                          <span className={getComponentClass('featureCard', 'badge')}>
+                            {feat.stats}
+                          </span>
+                          <span className={getComponentClass('featureCard', 'action')}>
+                            Explore <HiOutlineArrowRight size={16} />
+                          </span>
+                        </motion.div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+                return feat.disabled ? (
+                  <div key={feat.title}>{cardContent}</div>
+                ) : (
+                  <Link to={feat.path} key={feat.title}>
+                    {cardContent}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        )}
-        {role && (
-          <span className="inline-block px-3 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-200 rounded-full text-xs font-semibold">
-            {role.charAt(0).toUpperCase() + role.slice(1)}
-          </span>
-        )}
-      </div>
-
-      {/* Notifications/Alerts */}
-      {role === 'admin' && notifications.length > 0 && (
-        <div className="mb-8 flex flex-col items-center">
-          {notifications.map((n, i) => (
-            <div key={i} className={`flex items-center gap-2 mb-2 px-4 py-2 rounded-lg shadow text-sm ${n.type === 'alert' ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200' : 'bg-indigo-50 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200'}`}>
-              {n.type === 'alert' ? <HiOutlineExclamationCircle /> : <HiOutlineBell />} {n.message}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Recent Activity */}
-      <div className="mb-10">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <HiOutlineDocumentText className="text-indigo-500" />
-          {role === 'admin' ? 'Recent Organization Activity' : 'Your Recent Activity'}
-        </h2>
-        <div className="space-y-3">
-          {(role === 'admin' ? orgActivity : recentActivity).map((item, idx) => (
-            <div key={idx} className="flex items-center gap-3 bg-white dark:bg-indigo-500/10 rounded-lg p-3 shadow-sm">
-              <div className="p-2 rounded-full bg-indigo-100 dark:bg-indigo-500/20">
-                {item.type === 'upload' ? <HiOutlineUpload /> :
-                 item.type === 'query' ? <HiOutlineSearch /> :
-                 item.type === 'chat' ? <HiOutlineChatAlt2 /> :
-                 item.user ? <HiOutlineUserGroup /> :
-                 <HiOutlineDocumentText />}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm">
-                  {role === 'admin'
-                    ? <><span className="font-medium">{item.user}</span> {item.action}</>
-                    : item.detail}
-                </p>
-                <span className="text-xs text-gray-500">{item.time}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Feature Cards (Single Row) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-10">
-        {features.map(feat => {
-          const cardContent = (
-            <motion.div
-              whileHover={{ y: -5 }}
-              className={`relative block rounded-2xl p-6 text-white shadow-xl transition-transform ${
-                feat.disabled ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''
-              }`}
+          {/* Right column: Recent Activity above System Notifications */}
+          <div className="flex-1 max-w-lg flex flex-col gap-8">
+            {/* Recent Activity */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={getComponentClass('card', 'recentActivity')}
             >
-              <div
-                className={`absolute inset-0 bg-gradient-to-br ${feat.gradient} rounded-2xl`}
-              />
-              <div className="relative z-10 flex flex-col h-full">
-                <div className="bg-white bg-opacity-30 p-3 rounded-full mb-4">
-                  {feat.icon}
-                </div>
-                <h2 className="text-xl font-semibold mb-1">{feat.title}</h2>
-                <p className="text-sm mb-4 opacity-90">{feat.description}</p>
-                {!feat.disabled && (
-                  <span className="mt-auto inline-block px-4 py-2 bg-white bg-opacity-90 text-indigo-600 rounded-lg font-medium hover:bg-opacity-100 transition">
-                    Explore →
-                  </span>
-                )}
+              <h2 className={`${getComponentClass('typography', 'h2')} mb-4 flex items-center gap-2`}>
+                <HiOutlineClock className="text-blue-600 dark:text-blue-400" />
+                Recent Activity
+              </h2>
+              <div className="space-y-4">
+                <AnimatePresence>
+                  {(role === 'admin' ? orgActivity : recentActivity).map((item, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                      className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+                    >
+                      <div className="p-2 rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+                        {item.type === 'upload' ? <HiOutlineUpload className="w-5 h-5 text-blue-600 dark:text-blue-400" /> :
+                         item.type === 'query' ? <HiOutlineSearch className="w-5 h-5 text-purple-600 dark:text-purple-400" /> :
+                         item.type === 'chat' ? <HiOutlineChatAlt2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> :
+                         item.user ? <HiOutlineUserGroup className="w-5 h-5 text-amber-600 dark:text-amber-400" /> :
+                         <HiOutlineDocumentText className="w-5 h-5 text-gray-600 dark:text-gray-400" />}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-800 dark:text-white">
+                          {role === 'admin'
+                            ? <><span className="text-blue-600 dark:text-blue-400">{item.user}</span> {item.action}</>
+                            : item.detail}
+                        </p>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{item.time}</span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
               </div>
             </motion.div>
-          );
-
-          return feat.disabled ? (
-            <div key={feat.title}>{cardContent}</div>
-          ) : (
-            <Link to={feat.path} key={feat.title}>
-              {cardContent}
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* Need Help Card */}
-      <div className="flex justify-center">
-        <div className="flex items-center gap-3 p-4 bg-white dark:bg-indigo-500/10 rounded-xl shadow text-indigo-700 dark:text-indigo-200">
-          <HiOutlineQuestionMarkCircle className="text-2xl" />
-          <div>
-            <div className="font-semibold">Need Help?</div>
-            <a href="/help" className="underline">Visit Documentation & Support</a>
+            {/* System Notifications */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={getComponentClass('card', 'systemNotifications')}
+            >
+              <h2 className={`${getComponentClass('typography', 'h2')} mb-4 flex items-center gap-2`}>
+                <HiOutlineBell className="text-rose-600 dark:text-rose-400" />
+                System Notifications
+              </h2>
+              <div className="space-y-4">
+                {notifications.map((notification, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    className={`p-4 rounded-lg ${
+                      notification.type === 'alert' 
+                        ? getStatusClass('error')
+                        : getStatusClass('info')
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        notification.type === 'alert'
+                          ? 'bg-rose-100 dark:bg-rose-800/50'
+                          : 'bg-blue-100 dark:bg-blue-800/50'
+                      }`}>
+                        {notification.type === 'alert' 
+                          ? <HiOutlineExclamationCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+                          : <HiOutlineBell className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        }
+                      </div>
+                      <p className="text-sm text-gray-800 dark:text-white">{notification.message}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
           </div>
         </div>
+
+        {/* Help Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-8"
+        >
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg overflow-hidden">
+            <div className="px-6 py-8 sm:px-8">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white bg-opacity-20 rounded-lg">
+                    <HiOutlineQuestionMarkCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Need Enterprise Support?</h3>
+                    <p className="text-sm text-white/80 mt-1">Access our comprehensive documentation and support resources</p>
+                  </div>
+                </div>
+                <Link 
+                  to="/help"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white text-blue-600 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Get Support
+                  <HiOutlineArrowRight size={16} />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   );

@@ -261,7 +261,7 @@ export default function AnalyticsDashboard({ role: initialRole }) {
       {activeTab === 'analytics' && (
         <>
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
         <HiOutlineChartBar className="text-indigo-500" /> Analytics Dashboard
       </h1>
             <div className="flex gap-4">
@@ -302,7 +302,7 @@ export default function AnalyticsDashboard({ role: initialRole }) {
               selectsStart
               startDate={startDate}
               endDate={endDate}
-                className="px-3 py-2 border rounded-lg text-black dark:text-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-400"
+                className="px-3 py-2 border rounded-lg text-gray-800 dark:text-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-400"
             />
               <span className="text-gray-500 dark:text-gray-300">to</span>
             <DatePicker
@@ -312,7 +312,7 @@ export default function AnalyticsDashboard({ role: initialRole }) {
               startDate={startDate}
               endDate={endDate}
               minDate={startDate}
-                className="px-3 py-2 border rounded-lg text-black dark:text-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-400"
+                className="px-3 py-2 border rounded-lg text-gray-800 dark:text-white dark:bg-gray-800 focus:ring-2 focus:ring-indigo-400"
             />
           </div>
         </div>
@@ -684,19 +684,19 @@ export default function AnalyticsDashboard({ role: initialRole }) {
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">My Activity</h2>
           {/* Recent Activity */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-2">Recent Actions</h3>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Recent Actions</h3>
             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
               {personalActivity.map((item, idx) => (
                 <li key={idx} className="py-2 flex justify-between text-sm">
-                  <span>{item.type}: <span className="text-gray-500">{item.detail}</span></span>
-                  <span className="text-gray-400">{item.time}</span>
+                  <span className="text-gray-700 dark:text-gray-200">{item.type}: <span className="text-gray-500 dark:text-gray-300">{item.detail}</span></span>
+                  <span className="text-gray-400 dark:text-gray-200">{item.time}</span>
                 </li>
               ))}
             </ul>
           </div>
           {/* Help/Support */}
           <div className="mb-8">
-            <h3 className="text-lg font-semibold mb-2">Need Help?</h3>
+            <h3 className="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Need Help?</h3>
             <a href="/help" className="text-indigo-600 dark:text-indigo-300 underline">Visit Documentation & Support</a>
           </div>
         </div>

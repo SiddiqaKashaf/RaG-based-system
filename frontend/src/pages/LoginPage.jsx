@@ -35,13 +35,13 @@ export default function LoginPage({ onLogin }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="w-full max-w-md p-8 bg-white dark:bg-gradient-to-br dark:from-inherit- dark:to-purple-950 text-gray-800 dark:text-white rounded-2xl shadow-2xl">
-        <h2 className="text-3xl font-extrabold text-center text-indigo-700 dark:text-white mb-6">
+      <div className="w-full max-w-md p-8 bg-white/95 dark:bg-indigo-500/5 dark:backdrop-blur-lg dark:shadow-md dark:ring-1 dark:ring-white/20 rounded-3xl shadow-lg">
+        <h2 className="text-3xl font-extrabold text-center text-indigo-600 dark:text-indigo-300 mb-6">
           Welcome Back
         </h2>
 
         {error && (
-          <p className="text-red-500 bg-red-100 dark:bg-red-700 dark:text-white text-sm p-2 rounded mb-4">
+          <p className="bg-red-50/80 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm p-2 rounded mb-4">
             {error}
           </p>
         )}
@@ -52,7 +52,7 @@ export default function LoginPage({ onLogin }) {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-200 text-gray-900 dark:text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/80 dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
             required
           />
           <div className="relative">
@@ -61,13 +61,13 @@ export default function LoginPage({ onLogin }) {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-200 text-gray-900 dark:text-black focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/80 dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
               required
             />
             <button
               type="button"
               onClick={togglePasswordVisibility}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             >
               {showPassword ? (
                 <AiOutlineEyeInvisible size={20} />
@@ -86,7 +86,7 @@ export default function LoginPage({ onLogin }) {
 
         <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-300">
           Don't have an account?{' '}
-          <Link to="/signup" className="text-indigo-600 hover:underline dark:text-indigo-300">
+          <Link to="/signup" className="text-indigo-600 dark:text-indigo-300 hover:underline">
             Sign Up
           </Link>
         </p>

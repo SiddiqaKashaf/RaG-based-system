@@ -25,14 +25,27 @@ import {
   HiOutlineMicrophone,
   HiOutlineVolumeUp,
   HiOutlineTag,
-  HiOutlineUserGroup
+  HiOutlineUserGroup,
+  HiOutlineArrowDown
 } from 'react-icons/hi';
 import { FaRobot } from 'react-icons/fa';
 import { ImSpinner8 } from 'react-icons/im';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { useTheme } from '../theme';
+import { motion } from 'framer-motion';
+import EmojiPicker from 'emoji-picker-react';
+import { Tooltip } from 'react-tooltip';
+import { BsCheck2, BsCheck2All } from 'react-icons/bs';
+
 
 export default function ChatbotPage() {
+  // Correct background and card classes for each mode
+  const mainBgClass = 'min-h-screen w-full flex items-center justify-center py-8 px-2 bg-white dark:bg-gradient-to-br dark:from-[#181824] dark:via-[#23235b] dark:to-[#3a1c71]';
+  const cardClass = 'rounded-3xl shadow-2xl backdrop-blur-lg bg-white/90 border border-gray-200 p-8 dark:bg-gray-900/60 dark:border-white/20';
+  const sidebarCardClass = 'rounded-3xl shadow-xl backdrop-blur-lg bg-white/95 border border-gray-200 flex flex-col gap-6 p-6 h-full dark:bg-gray-900/60 dark:border-white/20';
+
+  // Concise state
   const [messages, setMessages] = useState([
     { 
       from: 'bot', 
@@ -44,55 +57,48 @@ export default function ChatbotPage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [context, setContext] = useState('general');
-  const [documents, setDocuments] = useState([]);
-  const [showInfo, setShowInfo] = useState(false);
   const [savedChats, setSavedChats] = useState([]);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showDocuments, setShowDocuments] = useState(false);
   const chatEndRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const [autoScroll, setAutoScroll] = useState(true);
+  const chatContainerRef = useRef(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [showSources, setShowSources] = useState(true);
-  const [exportFormat, setExportFormat] = useState('txt');
-  const [notificationSound, setNotificationSound] = useState(true);
-  const [typingIndicator, setTypingIndicator] = useState(true);
-  const [messageHistory, setMessageHistory] = useState([]);
-  const [showExportOptions, setShowExportOptions] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [voiceEnabled] = useState(true);
   const [selectedVoice, setSelectedVoice] = useState(null);
-  const [availableVoices, setAvailableVoices] = useState([]);
   const recognitionRef = useRef(null);
   const synthesisRef = useRef(window.speechSynthesis);
+  const { getComponentClass } = useTheme();
 
-  // New state variables for advanced features
-  const [showChatHistory, setShowChatHistory] = useState(false);
-  const [chatHistory, setChatHistory] = useState([]);
-  const [selectedChat, setSelectedChat] = useState(null);
-  const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
-  const [showAnalytics, setShowAnalytics] = useState(false);
-  const [showTeamSpace, setShowTeamSpace] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchFilters, setSearchFilters] = useState({
-    dateRange: null,
-    documentType: null,
-    department: null,
-    tags: []
-  });
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [currentFeedback, setCurrentFeedback] = useState(null);
-  const [showDocumentManager, setShowDocumentManager] = useState(false);
-  const [documentCategories, setDocumentCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState(null);
-  const [showUserSettings, setShowUserSettings] = useState(false);
-  const [userPreferences, setUserPreferences] = useState({
-    theme: 'light',
-    notifications: true,
-    autoSave: true,
-    defaultView: 'chat'
-  });
+  // Top-tier avatars
+  const botAvatar = (
+    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg border-2 border-indigo-300 dark:border-indigo-700">
+      <FaRobot size={20} className="text-white" />
+      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-white dark:border-gray-900 rounded-full" title="Online" />
+    </div>
+  );
+  const userAvatar = (
+    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-600 to-blue-400 flex items-center justify-center shadow-lg border-2 border-indigo-400">
+      <HiUser size={20} className="text-white" />
+    </div>
+  );
+
+  // Message status icon
+  const statusIcon = (status) => {
+    if (status === 'sent') return <BsCheck2 className="inline ml-1 text-gray-400" title="Sent" />;
+    if (status === 'delivered') return <BsCheck2All className="inline ml-1 text-blue-400" title="Delivered" />;
+    return null;
+  };
+
+  // Typing indicator
+  const [botTyping, setBotTyping] = useState(false);
+
+  // Animate bot typing for 1s when loading
+  useEffect(() => {
+    if (loading) setBotTyping(true);
+    else setTimeout(() => setBotTyping(false), 600);
+  }, [loading]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -128,10 +134,7 @@ export default function ChatbotPage() {
     // Initialize speech synthesis
     const loadVoices = () => {
       const voices = synthesisRef.current.getVoices();
-      setAvailableVoices(voices);
-      // Set default voice to first English voice
-      const englishVoice = voices.find(voice => voice.lang.startsWith('en-')) || voices[0];
-      setSelectedVoice(englishVoice);
+      setSelectedVoice(voices[0]);
     };
 
     if (synthesisRef.current.onvoiceschanged !== undefined) {
@@ -172,10 +175,22 @@ export default function ChatbotPage() {
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
+    utterance.onstart = () => {
+      // Add a class to indicate speech is being spoken
+      const chatCard = document.querySelector('.chat-card');
+      if (chatCard) {
+        chatCard.classList.add('speaking');
+      }
+    };
+    utterance.onend = () => {
+      // Remove the class when speech ends
+      const chatCard = document.querySelector('.chat-card');
+      if (chatCard) {
+        chatCard.classList.remove('speaking');
+      }
+    };
     utterance.onerror = () => {
-      setIsSpeaking(false);
+      setIsListening(false);
       toast.error('Error with voice synthesis. Please try again.');
     };
 
@@ -195,216 +210,173 @@ export default function ChatbotPage() {
         }
         
         // Check if file already exists
-        if (documents.some(doc => doc.name === file.name)) {
+        if (messages.some(msg => msg.text === file.name)) {
           toast.warning(`${file.name} is already uploaded`);
           return;
         }
 
-        const newDoc = {
-          id: Date.now() + Math.random(),
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          file: file,
-          uploadTime: new Date()
+        const newMsg = {
+          from: 'user',
+          text: file.name,
+          timestamp: new Date(),
+          type: 'file'
         };
 
-        setDocuments(prev => [...prev, newDoc]);
-        setContext('document');
-        
-        setMessages(prev => [...prev, { 
-          from: 'bot', 
-          text: `Document "${file.name}" has been loaded. You can now ask questions about it.`,
-          type: 'upload',
-          timestamp: new Date()
-        }]);
+        setMessages(prev => [...prev, newMsg]);
+        toast.success(`${file.name} uploaded successfully`);
       } else {
-        toast.error(`${file.name} is not a supported file type. Please upload PDF or DOCX files.`);
+        toast.error(`${file.name} is not a supported file type`);
       }
     });
   };
 
-  const removeDocument = (docId) => {
-    const docToRemove = documents.find(doc => doc.id === docId);
-    setDocuments(prev => prev.filter(doc => doc.id !== docId));
-    
-    if (docToRemove) {
-      setMessages(prev => [...prev, { 
-        from: 'bot', 
-        text: `Document "${docToRemove.name}" has been removed.`,
-        type: 'system',
-        timestamp: new Date()
-      }]);
-    }
-
-    if (documents.length === 1) {
-      setContext('general');
-    }
-  };
-
-  const removeAllDocuments = () => {
-    setDocuments([]);
-    setContext('general');
-    setMessages(prev => [...prev, { 
-      from: 'bot', 
-      text: 'All documents have been removed. You can now ask general questions or upload new documents.',
-      type: 'system',
-      timestamp: new Date()
-    }]);
-  };
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const formatUploadTime = (date) => {
-    return new Date(date).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+  const removeMessage = (index) => {
+    setMessages(prev => prev.filter((_, i) => i !== index));
+    toast.info('Message removed');
   };
 
   const resetChat = () => {
-    setMessages([{ 
-      from: 'bot', 
-      text: 'Chat reset. You can ask a new question or upload a document.',
-      type: 'system',
-      timestamp: new Date()
-    }]);
-    setInput('');
+    setMessages([
+      { 
+        from: 'bot', 
+        text: 'Hello! I can help you with both document search and general questions about the organization. How can I assist you today?',
+        type: 'welcome',
+        timestamp: new Date()
+      }
+    ]);
+    toast.info('Chat reset successfully');
   };
 
-  const saveChat = () => {
-    const chatData = {
-      id: Date.now(),
-      title: `Chat ${new Date().toLocaleString()}`,
-      messages,
-      context,
-      file: documents.length > 0 ? documents[0].name : null,
-      timestamp: new Date()
-    };
-    setSavedChats(prev => [...prev, chatData]);
-    toast.success('Chat saved successfully!');
+  // Add supported languages
+  const supportedLanguages = [
+    { code: 'en-US', label: 'English' },
+    { code: 'ur-PK', label: 'Urdu' }
+  ];
+
+  // Add document state
+  const [documents, setDocuments] = useState([]);
+  const [selectedLanguage, setSelectedLanguage] = useState('en-US');
+  const fileInputRef = useRef(null);
+
+  // Handle document upload
+  const handleDocumentUpload = (e) => {
+    const files = Array.from(e.target.files);
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword'
+    ];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    files.forEach(file => {
+      if (!allowedTypes.includes(file.type)) {
+        toast.error(`${file.name} is not a supported file type`);
+        return;
+      }
+      if (file.size > maxSize) {
+        toast.error(`${file.name} is too large. Maximum size is 10MB`);
+        return;
+      }
+      if (documents.some(doc => doc.name === file.name)) {
+        toast.warning(`${file.name} is already uploaded`);
+        return;
+      }
+      setDocuments(prev => [...prev, file]);
+      toast.success(`${file.name} uploaded successfully`);
+    });
+    e.target.value = '';
   };
+
+  const removeDocument = (name) => {
+    setDocuments(prev => prev.filter(doc => doc.name !== name));
+    toast.info('Document removed');
+  };
+
+  // Update voice recognition and synthesis to use selected language
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window && recognitionRef.current) {
+      recognitionRef.current.lang = selectedLanguage;
+    }
+  }, [selectedLanguage]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
-    const userMsg = { from: 'user', text: input, timestamp: new Date() };
-    setMessages(prev => [...prev, userMsg]);
+    const userMessage = {
+      from: 'user',
+      text: input,
+      timestamp: new Date(),
+      type: 'user'
+    };
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
-
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      let response;
-      if (context === 'document' && documents.length > 0) {
-        const formData = new FormData();
-        formData.append('file', documents[0].file);
-        formData.append('question', input);
-        
+      // Validate token first
+      const validateToken = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error('No authentication token found');
         try {
-          response = await axios.post(
-            'http://localhost:8000/query-doc',
-            formData,
-            { 
-              headers: { 
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'multipart/form-data'
-              } 
-            }
-          );
-        } catch (error) {
-          if (error.response?.status === 404) {
-            throw new Error('Document query endpoint not found. Please check if the server is running.');
-          }
-          throw error;
-        }
-      } else {
-        try {
-          response = await axios.post(
-            'http://localhost:8000/api/chat',
-            { 
-              question: input,
-              context: context
-            },
-            { 
-              headers: { 
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              } 
-            }
-          );
+          await axios.get('http://localhost:8000/api/profile', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          return token;
         } catch (error) {
           if (error.response?.status === 401) {
-            throw new Error('Authentication failed. Please log in again.');
+            localStorage.removeItem('token');
+            throw new Error('Authentication expired. Please login again.');
           }
           throw error;
         }
-      }
-      
-      const botMsg = { 
-        from: 'bot', 
-        text: response.data.answer,
-        type: context === 'document' ? 'document' : 'general',
-        sources: response.data.sources || [],
-        timestamp: new Date()
       };
-      setMessages(prev => [...prev, botMsg]);
-    } catch (err) {
-      console.error('Error sending message:', err);
-      const errMsg = err.message || 'Sorry, something went wrong. Please try again.';
-      setMessages(prev => [...prev, { 
-        from: 'bot', 
-        text: errMsg,
-        type: 'error',
-        timestamp: new Date()
-      }]);
+      const token = await validateToken();
+      // Prepare form data for file upload
+      const formData = new FormData();
+      formData.append('question', input);
+      formData.append('context', context);
+      formData.append('language', selectedLanguage);
+      documents.forEach((file, idx) => {
+        formData.append('documents', file, file.name);
+      });
+      const response = await axios.post('http://localhost:8000/api/chat', formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      const botMessage = {
+        from: 'bot',
+        text: response.data.answer || response.data.response || 'I received your message but couldn\'t process it properly.',
+        timestamp: new Date(),
+        type: 'bot',
+        sources: response.data.sources || []
+      };
+      setMessages(prev => [...prev, botMessage]);
+      if (voiceEnabled) speakResponse(botMessage.text);
+    } catch (error) {
+      let errorMessage = 'Failed to get response. Please try again.';
+      if (error.message.includes('Authentication expired')) {
+        errorMessage = 'Session expired. Please login again.';
+      } else if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'string') {
+          errorMessage = error.response.data.detail;
+        } else if (Array.isArray(error.response.data.detail)) {
+          errorMessage = error.response.data.detail.map(err => err.msg || err.message).join(', ');
+        } else {
+          errorMessage = 'Invalid request format. Please check your input.';
+        }
+      } else if (error.response?.status === 422) {
+        errorMessage = 'Invalid request format. Please check your input.';
+      }
+      const errorBotMessage = {
+        from: 'bot',
+        text: errorMessage,
+        timestamp: new Date(),
+        type: 'error'
+      };
+      setMessages(prev => [...prev, errorBotMessage]);
     } finally {
       setLoading(false);
     }
   };
-
-  // Add token validation on component mount
-  useEffect(() => {
-    const validateToken = async () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setMessages(prev => [...prev, { 
-          from: 'bot', 
-          text: 'Please log in to use the chat.',
-          type: 'error',
-          timestamp: new Date()
-        }]);
-        return;
-      }
-
-      try {
-        // You can add a token validation endpoint here
-        // const response = await axios.get('http://localhost:8000/validate-token', {
-        //   headers: { Authorization: `Bearer ${token}` }
-        // });
-      } catch (error) {
-        console.error('Token validation error:', error);
-        localStorage.removeItem('token');
-        setMessages(prev => [...prev, { 
-          from: 'bot', 
-          text: 'Your session has expired. Please log in again.',
-          type: 'error',
-          timestamp: new Date()
-        }]);
-      }
-    };
-
-    validateToken();
-  }, []);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -414,637 +386,353 @@ export default function ChatbotPage() {
   };
 
   const formatTimestamp = (timestamp) => {
-    return new Date(timestamp).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const renderMessage = (message) => {
+  // Responsive, accessible, animated chat bubble
+  const renderMessage = (message, index) => {
+    const isUser = message.from === 'user';
     const isBot = message.from === 'bot';
     return (
-      <div
-        className={`flex items-start gap-2 transition-all duration-300 ease-in-out 
-          ${isBot ? 'self-start flex-row' : 'self-end flex-row-reverse'}`}
+      <motion.div
+        key={index}
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: index * 0.04 }}
+        className={`group flex ${isUser ? 'justify-end' : 'justify-start'} w-full`}
+        tabIndex={0}
+        aria-label={isUser ? 'Your message' : 'Bot message'}
       >
-        <div className="p-2 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-800 dark:text-white">
-          {isBot ? <FaRobot /> : <HiUser />}
-        </div>
-        <div className="flex flex-col gap-1 max-w-[80%]">
-          <div className={`p-3 rounded-lg whitespace-pre-wrap
-            ${isBot
-              ? 'bg-gray-200 text-gray-800 dark:bg-white/10 dark:text-white'
-              : 'bg-indigo-800 text-white dark:bg-indigo-600'}`}
-          >
-            {message.text}
+        <div className={`flex items-end gap-3 max-w-[80%] ${isUser ? 'flex-row-reverse' : ''}`}>
+          {/* Avatar */}
+          <div className="relative">
+            {isUser ? userAvatar : botAvatar}
           </div>
-          {message.sources && message.sources.length > 0 && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-              Sources: {message.sources.join(', ')}
+          {/* Bubble */}
+          <div className={`relative flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
+            >
+            <div
+              className={`px-4 py-2 rounded-2xl shadow-lg transition group-hover:ring-2 group-hover:ring-indigo-400
+                ${isUser
+                  ? 'bg-gradient-to-br from-indigo-600 to-blue-500 text-white'
+                  : 'bg-white/90 dark:bg-gradient-to-br dark:from-indigo-900 dark:via-purple-900 dark:to-indigo-700 text-gray-900 dark:text-white backdrop-blur-md border border-gray-200/60 dark:border-indigo-900/40'}
+                animate-fadeIn`}
+              tabIndex={0}
+              aria-label={isUser ? 'Your message bubble' : 'Bot message bubble'}
+            >
+              <span className="whitespace-pre-wrap break-words">{message.text}</span>
+              {/* Sources for bot messages */}
+              {isBot && message.sources && message.sources.length > 0 && showSources && (
+                <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Sources:</p>
+                  <div className="space-y-1">
+                    {message.sources.map((source, idx) => (
+                      <div key={idx} className="text-xs text-indigo-600 dark:text-indigo-400">• {source}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-          <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-            {formatTimestamp(message.timestamp)}
+            {/* Timestamp and Status (on hover or always on mobile) */}
+            <div className="flex items-center gap-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-xs text-gray-400 dark:text-gray-300">
+              <span>{new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <span>{isUser ? statusIcon('sent') : statusIcon('delivered')}</span>
+            </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   };
 
   const exportChat = (format) => {
-    const chatContent = messages.map(msg => {
-      const timestamp = formatTimestamp(msg.timestamp);
-      const source = msg.sources ? `\nSources: ${msg.sources.join(', ')}` : '';
-      return `[${timestamp}] ${msg.from.toUpperCase()}: ${msg.text}${source}`;
-    }).join('\n\n');
-
-    const blob = new Blob([chatContent], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `chat-export-${new Date().toISOString()}.${format}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-    setShowExportOptions(false);
-    toast.success('Chat exported successfully!');
+    const chatContent = messages.map(msg => 
+      `${msg.from === 'user' ? 'You' : 'AI'}: ${msg.text}`
+    ).join('\n\n');
+    
+    if (format === 'txt') {
+      const blob = new Blob([chatContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `chat-${new Date().toISOString().split('T')[0]}.txt`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+    
+    toast.success('Chat exported successfully');
   };
 
   const shareChat = async () => {
     try {
       const chatData = {
-        messages,
-        documents: documents.map(doc => doc.name),
-        timestamp: new Date().toISOString()
+        messages: messages,
+        timestamp: new Date()
       };
-      
+
       if (navigator.share) {
         await navigator.share({
-          title: 'Shared Chat',
-          text: 'Check out this chat conversation',
-          files: [new File([JSON.stringify(chatData)], 'chat.json', { type: 'application/json' })]
+          title: 'Chat Conversation',
+          text: 'Check out this conversation with our AI assistant',
+          url: window.location.href
         });
-        toast.success('Chat shared successfully!');
       } else {
-        // Fallback for browsers that don't support Web Share API
-        const url = `data:application/json,${encodeURIComponent(JSON.stringify(chatData))}`;
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'chat.json';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        toast.success('Chat downloaded as JSON!');
+        // Fallback: copy to clipboard
+        const chatText = messages.map(msg => 
+          `${msg.from === 'user' ? 'You' : 'AI'}: ${msg.text}`
+        ).join('\n\n');
+        
+        await navigator.clipboard.writeText(chatText);
+        toast.success('Chat copied to clipboard');
       }
     } catch (error) {
+      console.error('Share error:', error);
       toast.error('Failed to share chat');
     }
   };
 
-  // New functions for advanced features
   const handleFeedback = (messageId, feedback) => {
-    setCurrentFeedback({ messageId, feedback });
-    // API call to save feedback
+    toast.success('Thank you for your feedback!');
   };
 
-  const categorizeDocument = (docId, category) => {
-    setDocuments(prev => prev.map(doc => 
-      doc.id === docId ? { ...doc, category } : doc
-    ));
-  };
-
-  const searchChatHistory = (query) => {
-    // Implement semantic search across chat history
-  };
-
-  const exportAnalytics = () => {
-    // Export usage analytics and insights
-  };
-
-  const shareWithTeam = (chatId, teamMembers) => {
-    // Share chat with selected team members
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
-    <div className="fixed inset-0 overflow-hidden">
-      <div className="w-full h-full max-w-[1920px] mx-auto p-6 rounded-3xl shadow-lg
-        bg-white dark:bg-indigo-500/5 dark:backdrop-blur-lg dark:shadow-md dark:ring-1 dark:ring-white/20
-        flex flex-col">
-        
-        {/* Top Navigation Bar */}
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold flex items-center gap-2 
-              text-gray-800 dark:text-white">
-              <HiOutlineChatAlt2 className="text-indigo-500" />
-              AI Assistant
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowDocuments(!showDocuments)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-100 
-                text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-800 
-                dark:text-white dark:hover:bg-indigo-700 transition"
-            >
-              <HiOutlineDocumentAdd />
-              Manage Documents
-            </button>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-100 
-                text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-800 
-                dark:text-white dark:hover:bg-indigo-700 transition"
-            >
-              <HiOutlineUpload />
-              Upload Document
-            </button>
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-2 rounded-lg text-gray-500 hover:text-indigo-500 
-                hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-              title="Settings"
-            >
-              <HiOutlineCog size={20} />
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              className="hidden"
-              accept=".pdf,.docx"
-              multiple
-            />
-          </div>
-        </div>
-
-        {/* Feature Navigation */}
-        <div className="flex items-center gap-2 mb-4 p-2 bg-gray-50 dark:bg-white/5 rounded-lg">
-          <button
-            onClick={() => setShowChatHistory(!showChatHistory)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-              showChatHistory 
-                ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-800 dark:text-white' 
-                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10'
-            }`}
-          >
-            <HiOutlineClock size={18} />
-            <span>Chat History</span>
-          </button>
-          <button
-            onClick={() => setShowKnowledgeBase(!showKnowledgeBase)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-              showKnowledgeBase 
-                ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-800 dark:text-white' 
-                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10'
-            }`}
-          >
-            <HiOutlineDocumentText size={18} />
-            <span>Knowledge Base</span>
-          </button>
-          <button
-            onClick={() => setShowAnalytics(!showAnalytics)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-              showAnalytics 
-                ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-800 dark:text-white' 
-                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10'
-            }`}
-          >
-            <HiOutlineLightBulb size={18} />
-            <span>Analytics</span>
-          </button>
-          <button
-            onClick={() => setShowTeamSpace(!showTeamSpace)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-              showTeamSpace 
-                ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-800 dark:text-white' 
-                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/10'
-            }`}
-          >
-            <HiOutlineUserGroup size={18} />
-            <span>Team Space</span>
-          </button>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="flex gap-6 flex-1 min-h-0">
-          {/* Chat Interface */}
-          <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-white/70">
-                <HiOutlineLightBulb className="text-indigo-500" />
-                <span>Current Mode: {context === 'document' ? 'Document Search' : 'General Chat'}</span>
+    <div className={mainBgClass}>
+      <div className="max-w-7xl w-full grid grid-cols-12 gap-6">
+        {/* Sidebar */}
+        <div className="col-span-3 flex flex-col h-full">
+          <div className={sidebarCardClass}>
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              {botAvatar}
+              <div>
+                <h2 className={getComponentClass('typography', 'h2')}>AI Assistant</h2>
+                <p className={getComponentClass('typography', 'body') + ' mt-1'}>Your smart assistant for chat and document search</p>
               </div>
-              {documents.length > 0 && (
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-white/70">
-                  <HiOutlineDocumentText className="text-indigo-500" />
-                  <span>{documents.length} document{documents.length > 1 ? 's' : ''} loaded</span>
-                </div>
-              )}
             </div>
-
-            <div className="flex-1 flex flex-col border rounded-lg overflow-hidden 
-              border-gray-200 dark:border-white/20 min-h-0">
-              <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-gray-50 dark:bg-white/5">
-                {messages.map((m, i) => (
-                  <div key={i}>
-                    {renderMessage(m)}
-                  </div>
+            {/* Language Selector */}
+            <div className="mb-4">
+              <label className={getComponentClass('form', 'label') + ' mb-1'}>Language</label>
+              <select
+                value={selectedLanguage}
+                onChange={e => setSelectedLanguage(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white"
+                aria-label="Select language"
+              >
+                {supportedLanguages.map(lang => (
+                  <option key={lang.code} value={lang.code}>{lang.label}</option>
                 ))}
-                {loading && typingIndicator && (
-                  <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                    <ImSpinner8 className="animate-spin" />
-                    <span>AI is typing...</span>
+              </select>
+            </div>
+            {/* Document Upload */}
+            <div className="mb-4">
+              <label className={getComponentClass('form', 'label') + ' mb-1'}>Upload Documents</label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleDocumentUpload}
+                className="hidden"
+                multiple
+                accept=".pdf,.doc,.docx,.docx,.txt"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className={getComponentClass('button', 'secondary') + ' w-full mb-2'}
+                aria-label="Upload document"
+              >
+                <HiOutlineUpload className="inline mr-2" /> Upload Document
+              </button>
+              {/* List uploaded docs */}
+              <div className="space-y-1 max-h-24 overflow-y-auto">
+                {documents.length === 0 ? (
+                  <div className={getComponentClass('typography', 'caption')}>No documents uploaded</div>
+                ) : (
+                  documents.map(doc => (
+                    <div key={doc.name} className="flex items-center justify-between bg-white/80 dark:bg-white/10 border border-gray-200 dark:border-white/10 rounded px-2 py-1 text-xs shadow-sm">
+                      <span className="truncate text-gray-800 dark:text-gray-100" title={doc.name}>{doc.name}</span>
+                      <button onClick={() => removeDocument(doc.name)} className="ml-2 text-red-500 hover:text-red-700" aria-label={`Remove ${doc.name}`}><HiOutlineTrash size={14} /></button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            {/* Context Selector */}
+            <div>
+              <label className={getComponentClass('form', 'label') + ' mb-1'}>Context</label>
+              <select
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white"
+                aria-label="Select chat context"
+              >
+                <option value="general">General</option>
+                <option value="documents">Document Search</option>
+                <option value="technical">Technical Support</option>
+                <option value="business">Business</option>
+              </select>
+            </div>
+            {/* Quick Actions */}
+            <div className="space-y-2 mt-4">
+              <button
+                onClick={() => setMessages([messages[0]])}
+                className={getComponentClass('button', 'primary') + ' flex items-center gap-2 w-full'}
+                aria-label="Reset chat"
+              >
+                <HiRefresh size={16} />
+                Reset Chat
+              </button>
+              <button
+                onClick={() => setSavedChats(prev => [...prev, { id: Date.now(), title: `Chat ${new Date().toLocaleDateString()}`, messages }])}
+                className={getComponentClass('button', 'primary') + ' flex items-center gap-2 w-full'}
+                aria-label="Save chat"
+              >
+                <HiOutlineBookmark size={16} />
+                Save Chat
+              </button>
+            </div>
+            {/* Saved Chats List */}
+            <div className="mt-4">
+              <h3 className={getComponentClass('typography', 'h3') + ' mb-2'}>Saved Chats</h3>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {savedChats.length === 0 ? (
+                  <div className={getComponentClass('typography', 'caption')}>No saved chats</div>
+                ) : (
+                  savedChats.map((chat) => (
+                    <button key={chat.id} className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-indigo-600/10 transition text-gray-700 dark:text-gray-200" aria-label={`Load chat: ${chat.title}`}>
+                      <HiOutlineChatAlt2 size={16} />
+                      <span className="truncate text-xs">{chat.title}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Main Chat Area */}
+        <div className="col-span-9 flex flex-col h-[90vh]">
+          <div className="relative flex flex-col h-full">
+            {/* Chat Card */}
+            <div className={cardClass + ' flex-1 flex flex-col h-[90vh] max-h-[90vh]'}>
+              {/* Chat Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  {userAvatar}
+                  <div>
+                    <h1 className={getComponentClass('typography', 'h1')}>AI Assistant</h1>
+                    <p className={getComponentClass('typography', 'body')}>
+                      {context === 'general' ? 'General Assistant' :
+                        context === 'documents' ? 'Document Search' :
+                          context === 'technical' ? 'Technical Support' : 'Business Assistant'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button className={getComponentClass('button', 'secondary') + ' flex items-center gap-2'} aria-label="Export chat" data-tooltip-id="main-tooltip" data-tooltip-content="Export chat">
+                    <HiOutlineArrowDown size={16} />
+                  </button>
+                  <button className={getComponentClass('button', 'secondary') + ' flex items-center gap-2'} aria-label="Share chat" data-tooltip-id="main-tooltip" data-tooltip-content="Share chat">
+                    <HiOutlineTag size={16} />
+                  </button>
+                  <Tooltip id="main-tooltip" className="z-50 !bg-gray-900 !text-white !rounded-lg !px-3 !py-2 !shadow-lg" />
+                </div>
+              </div>
+              {/* Messages */}
+              <div
+                className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2 h-full scrollbar-thin scrollbar-thumb-indigo-400 scrollbar-track-transparent"
+                onScroll={() => {
+                  if (!chatContainerRef.current) return;
+                  const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+                  setIsAtBottom(scrollTop + clientHeight >= scrollHeight - 10);
+                }}
+                ref={chatContainerRef}
+                style={{ scrollBehavior: 'smooth' }}
+                aria-live="polite"
+              >
+                {messages.map(renderMessage)}
+                {botTyping && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="flex items-end gap-3 max-w-[80%]"
+                  >
+                    {botAvatar}
+                    <div className="px-4 py-2 rounded-2xl shadow-lg bg-white/90 dark:bg-gradient-to-br dark:from-indigo-900 dark:via-purple-900 dark:to-indigo-700 text-gray-900 dark:text-white animate-pulse flex items-center gap-2">
+                      <ImSpinner8 className="animate-spin text-indigo-500" size={16} />
+                      <span>AI is typing...</span>
+                    </div>
+                  </motion.div>
+                )}
+                {loading && !botTyping && (
+                  <div className="w-fit max-w-2xl">
+                    <div className="p-4 flex items-center gap-2 bg-white/80 dark:bg-gray-800/80 rounded-2xl shadow">
+                      <ImSpinner8 className="animate-spin text-indigo-500" size={16} />
+                      <span className="text-gray-500 dark:text-gray-400">AI is thinking...</span>
+                    </div>
                   </div>
                 )}
                 <div ref={chatEndRef} />
               </div>
-
-              <div className="flex items-center gap-2 p-3 border-t border-gray-300 dark:border-white/20">
-                <div className="relative">
-                  <button
-                    onClick={() => setShowExportOptions(!showExportOptions)}
-                    className="p-2 rounded-lg text-gray-500 hover:text-indigo-500 
-                      hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                    title="More Options"
-                  >
-                    <HiOutlineBookmark size={20} />
-                  </button>
-                  {showExportOptions && (
-                    <div className="absolute bottom-full left-0 mb-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-                      <div className="py-1">
-                        <button
-                          onClick={() => {
-                            saveChat();
-                            setShowExportOptions(false);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                        >
-                          <HiOutlineBookmark size={16} />
-                          Save Chat
-                        </button>
-                        <button
-                          onClick={() => {
-                            shareChat();
-                            setShowExportOptions(false);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                        >
-                          <HiOutlineShare size={16} />
-                          Share Chat
-                        </button>
-                        <button
-                          onClick={() => {
-                            resetChat();
-                            setShowExportOptions(false);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                        >
-                          <HiRefresh size={16} />
-                          Reset Chat
-                        </button>
-                        <button
-                          onClick={() => {
-                            exportChat(exportFormat);
-                            setShowExportOptions(false);
-                          }}
-                          className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-                        >
-                          <HiOutlineDownload size={16} />
-                          Export Chat
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    sendMessage();
-                  }}
-                  className="flex-1 flex items-center relative"
-                >
+              {/* Input Area */}
+              <div className="flex items-end gap-2 mt-auto relative z-10">
+                <div className="flex-1 relative">
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={context === 'document' 
-                      ? "Ask a question about the document..."
-                      : "Ask a general question or upload a document..."}
-                    disabled={loading || isListening}
-                    className="flex-1 px-4 py-2 pr-12 border rounded-lg h-12 resize-none 
-                      text-black dark:text-white 
-                      bg-white dark:bg-white/10 
-                      focus:ring-2 focus:ring-indigo-400 
-                      border-gray-300 dark:border-white/30"
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+                    placeholder="Type your message here..."
+                    className={getComponentClass('form', 'input') + ' pr-20 resize-none'}
+                    rows={1}
+                    style={{ minHeight: '44px', maxHeight: '120px' }}
+                    aria-label="Chat input"
                   />
-                  <div className="absolute right-2 flex items-center gap-1">
-                    <button
-                      type="submit"
-                      disabled={loading || isListening}
-                      className="p-2 rounded-lg transition 
-                        bg-indigo-600 text-white hover:bg-indigo-700 
-                        disabled:opacity-50"
-                    >
-                      {loading ? <ImSpinner8 className="animate-spin" /> : <HiOutlinePaperAirplane size={20} />}
-                    </button>
-                  </div>
-                </form>
-                {voiceEnabled && (
-                  <button
-                    onClick={isListening ? stopListening : startListening}
-                    className={`p-2 rounded-lg transition-colors ${
-                      isListening 
-                        ? 'text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20' 
-                        : 'text-gray-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'
-                    }`}
-                    title={isListening ? 'Stop Listening' : 'Start Voice Input'}
-                  >
-                    <HiOutlineMicrophone size={20} className={isListening ? 'animate-pulse' : ''} />
+                  {/* Emoji Picker Button */}
+                  <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="absolute right-14 bottom-2 p-1 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/20 transition" aria-label="Open emoji picker">
+                    <HiOutlineTag size={16} />
                   </button>
-                )}
+                  {/* Voice Input Button */}
+                  <button
+                    onClick={() => setIsListening(!isListening)}
+                    className={`absolute right-8 bottom-2 p-1 rounded-lg ${isListening
+                      ? 'bg-red-500 text-white animate-pulse'
+                      : 'text-gray-500 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'} transition`}
+                    aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+                  >
+                    <HiOutlineMicrophone size={16} />
+                  </button>
+                  {/* Emoji Picker Dropdown */}
+                  {showEmojiPicker && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute bottom-14 right-0 z-50"
+                    >
+                      <EmojiPicker
+                        onEmojiClick={(emojiData) => setInput(input + emojiData.emoji)}
+                        theme={window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'}
+                        aria-label="Emoji picker"
+                      />
+                    </motion.div>
+                  )}
+                </div>
+                <motion.button
+                  onClick={sendMessage}
+                  disabled={!input.trim() || loading}
+                  whileTap={{ scale: 0.9 }}
+                  whileHover={{ scale: 1.1 }}
+                  className={getComponentClass('button', 'primary') + ' p-3 rounded-lg shadow-lg focus:ring-2 focus:ring-indigo-400'}
+                  aria-label="Send message"
+                >
+                  <HiOutlinePaperAirplane size={20} />
+                </motion.button>
               </div>
             </div>
           </div>
-
-          {/* Feature Panels */}
-          {(showChatHistory || showKnowledgeBase || showAnalytics || showTeamSpace) && (
-            <div className="w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 overflow-y-auto">
-              {showChatHistory && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-gray-800 dark:text-white">Chat History</h3>
-                  <input
-                    type="text"
-                    placeholder="Search chats..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
-                  />
-                  <div className="space-y-2">
-                    {chatHistory.map(chat => (
-                      <div
-                        key={chat.id}
-                        onClick={() => setSelectedChat(chat)}
-                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                      >
-                        <p className="text-sm font-medium">{chat.title}</p>
-                        <p className="text-xs text-gray-500">{chat.date}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {showKnowledgeBase && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-gray-800 dark:text-white">Knowledge Base</h3>
-                  <div className="space-y-2">
-                    {documentCategories.map(category => (
-                      <div
-                        key={category.id}
-                        onClick={() => setSelectedCategory(category)}
-                        className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                      >
-                        <p className="text-sm font-medium">{category.name}</p>
-                        <p className="text-xs text-gray-500">{category.count} documents</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {showAnalytics && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-gray-800 dark:text-white">Analytics</h3>
-                  <div className="space-y-4">
-                    <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <p className="text-sm font-medium">Total Queries</p>
-                      <p className="text-2xl font-bold">1,234</p>
-                    </div>
-                    <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <p className="text-sm font-medium">Success Rate</p>
-                      <p className="text-2xl font-bold">98%</p>
-                    </div>
-                    <button
-                      onClick={exportAnalytics}
-                      className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                    >
-                      Export Analytics
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {showTeamSpace && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-gray-800 dark:text-white">Team Space</h3>
-                  <div className="space-y-2">
-                    <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <p className="text-sm font-medium">Active Users</p>
-                      <p className="text-2xl font-bold">12</p>
-                    </div>
-                    <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                      <p className="text-sm font-medium">Shared Documents</p>
-                      <p className="text-2xl font-bold">45</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
-
-      {/* Keep existing modals */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">User Settings</h3>
-              <button
-                onClick={() => setShowUserSettings(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                <HiOutlineXCircle size={20} />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Dark Mode</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Toggle dark/light theme</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={userPreferences.theme === 'dark'}
-                  onChange={(e) => setUserPreferences(prev => ({
-                    ...prev,
-                    theme: e.target.checked ? 'dark' : 'light'
-                  }))}
-                  className="toggle toggle-primary"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Notifications</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Enable/disable notifications</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={userPreferences.notifications}
-                  onChange={(e) => setUserPreferences(prev => ({
-                    ...prev,
-                    notifications: e.target.checked
-                  }))}
-                  className="toggle toggle-primary"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Auto-save</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Automatically save chat history</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={userPreferences.autoSave}
-                  onChange={(e) => setUserPreferences(prev => ({
-                    ...prev,
-                    autoSave: e.target.checked
-                  }))}
-                  className="toggle toggle-primary"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showDocumentManager && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-4xl">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Document Manager</h3>
-              <button
-                onClick={() => setShowDocumentManager(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                <HiOutlineXCircle size={20} />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-700 dark:text-gray-300">Categories</h4>
-                <div className="space-y-2">
-                  {documentCategories.map(category => (
-                    <div
-                      key={category.id}
-                      className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
-                    >
-                      {category.name}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-4">
-                <h4 className="font-medium text-gray-700 dark:text-gray-300">Documents</h4>
-                <div className="space-y-2">
-                  {documents.map(doc => (
-                    <div
-                      key={doc.id}
-                      className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700"
-                    >
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-medium text-gray-800 dark:text-white">{doc.name}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{doc.category}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => categorizeDocument(doc.id, 'new-category')}
-                            className="p-1 rounded-lg text-gray-500 hover:text-indigo-500"
-                          >
-                            <HiOutlineTag size={16} />
-                          </button>
-                          <button
-                            onClick={() => removeDocument(doc.id)}
-                            className="p-1 rounded-lg text-gray-500 hover:text-red-500"
-                          >
-                            <HiOutlineTrash size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showUserSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">User Settings</h3>
-              <button
-                onClick={() => setShowUserSettings(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                <HiOutlineXCircle size={20} />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Dark Mode</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Toggle dark/light theme</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={userPreferences.theme === 'dark'}
-                  onChange={(e) => setUserPreferences(prev => ({
-                    ...prev,
-                    theme: e.target.checked ? 'dark' : 'light'
-                  }))}
-                  className="toggle toggle-primary"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Notifications</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Enable/disable notifications</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={userPreferences.notifications}
-                  onChange={(e) => setUserPreferences(prev => ({
-                    ...prev,
-                    notifications: e.target.checked
-                  }))}
-                  className="toggle toggle-primary"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Auto-save</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Automatically save chat history</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={userPreferences.autoSave}
-                  onChange={(e) => setUserPreferences(prev => ({
-                    ...prev,
-                    autoSave: e.target.checked
-                  }))}
-                  className="toggle toggle-primary"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

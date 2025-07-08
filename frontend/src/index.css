@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global background consistency */
+body {
+  background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 50%, #E2E8F0 100%);
+}
+
+html[class~='dark'] body {
+  background: linear-gradient(135deg, #181824 0%, #232046 60%, #6d28d9 100%);
+}
+
 /* Force Recharts axis labels to be visible in both themes */
 .recharts-cartesian-axis-tick-value {
   fill: #1F2937 !important; /* Tailwind gray-800, very dark for light theme */
@@ -9,4 +18,45 @@
 }
 html[class~='dark'] .recharts-cartesian-axis-tick-value, body.dark .recharts-cartesian-axis-tick-value {
   fill: #E5E7EB !important; /* Tailwind gray-200 for dark mode */
+}
+
+/* Consistent scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+html[class~='dark'] ::-webkit-scrollbar-track {
+  background: #1E293B;
+}
+
+html[class~='dark'] ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+html[class~='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: #64748B;
+}
+
+/* Consistent focus styles */
+*:focus {
+  outline: 2px solid #3B82F6;
+  outline-offset: 2px;
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
 }
