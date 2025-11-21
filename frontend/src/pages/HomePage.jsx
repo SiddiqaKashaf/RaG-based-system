@@ -52,24 +52,90 @@ export default function HomePage() {
   const [role, setRole] = useState(null);
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState(null);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [orgActivity, setOrgActivity] = useState([]);
+  const [stats, setStats] = useState({ 
+    totalDocuments: 0, 
+    activeUsers: 0, 
+    aiQueries: 0, 
+    systemHealth: '99.98%' 
+  });
 
-  // Simulated notifications and activity for demo
-  const [notifications] = useState([
-    { type: 'info', message: 'System maintenance scheduled for Sunday 2am.' },
-    { type: 'alert', message: '1 user pending approval.' }
-  ]);
-  const [recentActivity] = useState([
-    { type: 'upload', detail: 'Uploaded "Q2_report.pdf"', time: '2 hours ago' },
-    { type: 'query', detail: 'Searched for "HR policy"', time: '5 hours ago' },
-    { type: 'chat', detail: 'Chatted with AI Assistant', time: '1 day ago' }
-  ]);
-  const [orgActivity] = useState([
-    { user: 'Alice', action: 'Uploaded "sales.xlsx"', time: '1 hour ago' },
-    { user: 'Bob', action: 'Searched for "client list"', time: '3 hours ago' },
-    { user: 'Admin', action: 'Added new user', time: 'yesterday' }
-  ]);
-  const [orgStats] = useState({ users: 42, active: 37, uptime: '99.98%', pending: 1 });
-  const [personalStats] = useState({ queries: 12, uploads: 3, lastLogin: 'Today, 09:12 AM' });
+  // Fetch dashboard data
+  const fetchDashboardData = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Fetch dashboard stats
+      const dashboardResponse = await axios.get('http://localhost:8000/api/dashboard', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDashboardData(dashboardResponse.data);
+
+      // Calculate stats
+      const docStats = dashboardResponse.data.document_stats || {};
+      const userStats = dashboardResponse.data.user_stats || {};
+      setStats({
+        totalDocuments: docStats.total || 0,
+        activeUsers: userStats.total || 0,
+        aiQueries: 0, // Will be calculated from activities
+        systemHealth: '99.98%'
+      });
+
+      // Fetch recent activities
+      const activityResponse = await axios.get('http://localhost:8000/api/chat/activities/recent', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const activities = activityResponse.data.map(activity => {
+        const timeAgo = getTimeAgo(new Date(activity.created_at));
+        return {
+          type: activity.type === 'document_query' ? 'query' : activity.type === 'document_upload' ? 'upload' : 'chat',
+          detail: activity.target || activity.action || 'Activity',
+          time: timeAgo
+        };
+      });
+      setRecentActivity(activities);
+
+      // For admin, fetch org-wide activities
+      if (role === 'admin') {
+        const orgActivities = dashboardResponse.data.recent_activities || [];
+        setOrgActivity(orgActivities.map(activity => {
+          const timeAgo = getTimeAgo(new Date(activity.created_at));
+          return {
+            user: activity.user_name || 'Unknown',
+            action: activity.action || activity.target || 'Activity',
+            time: timeAgo
+          };
+        }));
+      }
+
+      // Count queries from activities
+      const queryCount = activities.filter(a => a.type === 'query' || a.type === 'chat').length;
+      setStats(prev => ({ ...prev, aiQueries: queryCount }));
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    }
+  };
+
+  const getTimeAgo = (date) => {
+    const now = new Date();
+    const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -80,6 +146,12 @@ export default function HomePage() {
     }
     setLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (!loading && role) {
+      fetchDashboardData();
+    }
+  }, [loading, role]);
 
   const features = [
     {
@@ -107,14 +179,6 @@ export default function HomePage() {
       stats: 'Real-time Insights'
     },
     {
-      title: 'Document Management',
-      path: '/documents',
-      icon: <HiOutlineDatabase size={24} />,
-      description: 'Secure document storage and management system',
-      gradient: 'documents',
-      stats: 'Enterprise Security'
-    },
-    {
       title: 'User Management',
       path: role === 'admin' ? '/admin/users' : '#',
       icon: role === 'admin' ? <HiOutlineUserGroup size={24} /> : <HiOutlineLockClosed size={24} />,
@@ -133,8 +197,12 @@ export default function HomePage() {
     }
   ];
 
-  // Remove Enterprise Search and System Settings from features
-  const filteredFeatures = features.filter(f => f.title !== 'Enterprise Search' && f.title !== 'System Settings');
+  // Remove Enterprise Search, System Settings, and Document Management from features
+  const filteredFeatures = features.filter(f => 
+    f.title !== 'Enterprise Search' && 
+    f.title !== 'System Settings' && 
+    f.title !== 'Document Management'
+  );
 
   if (loading) {
     return (
@@ -195,7 +263,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Documents</p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">1,234</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{stats.totalDocuments}</p>
               </div>
               <div className="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
                 <HiOutlineDocumentText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -216,7 +284,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between ">
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Active Users</p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{orgStats.active}</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{stats.activeUsers}</p>
               </div>
               <div className="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg">
                 <HiOutlineUserGroup className="w-6 h-6 text-purple-600 dark:text-purple-400" />
@@ -237,7 +305,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">AI Queries</p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">892</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{stats.aiQueries}</p>
               </div>
               <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg">
                 <HiOutlineLightBulb className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
@@ -258,7 +326,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400">System Health</p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{orgStats.uptime}</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-white mt-1">{stats.systemHealth}</p>
               </div>
               <div className="p-3 bg-rose-50 dark:bg-rose-900/30 rounded-lg">
                 <HiOutlineShieldCheck className="w-6 h-6 text-rose-600 dark:text-rose-400" />
@@ -361,46 +429,6 @@ export default function HomePage() {
                     </motion.div>
                   ))}
                 </AnimatePresence>
-              </div>
-            </motion.div>
-            {/* System Notifications */}
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={getComponentClass('card', 'systemNotifications')}
-            >
-              <h2 className={`${getComponentClass('typography', 'h2')} mb-4 flex items-center gap-2`}>
-                <HiOutlineBell className="text-rose-600 dark:text-rose-400" />
-                System Notifications
-              </h2>
-              <div className="space-y-4">
-                {notifications.map((notification, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.1 }}
-                    className={`p-4 rounded-lg ${
-                      notification.type === 'alert' 
-                        ? getStatusClass('error')
-                        : getStatusClass('info')
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg ${
-                        notification.type === 'alert'
-                          ? 'bg-rose-100 dark:bg-rose-800/50'
-                          : 'bg-blue-100 dark:bg-blue-800/50'
-                      }`}>
-                        {notification.type === 'alert' 
-                          ? <HiOutlineExclamationCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
-                          : <HiOutlineBell className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        }
-                      </div>
-                      <p className="text-sm text-gray-800 dark:text-white">{notification.message}</p>
-                    </div>
-                  </motion.div>
-                ))}
               </div>
             </motion.div>
           </div>

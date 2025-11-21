@@ -7,8 +7,10 @@ from pydantic import BaseModel, EmailStr
 import bcrypt
 import jwt
 from datetime import datetime, timedelta
-from ..database.db import get_db
-from ..config import settings
+from backend.database.db import get_db
+
+from backend.config import settings
+
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
@@ -129,7 +131,7 @@ async def login_endpoint(
                 "email": user["email"],
                 "name": user["name"],
                 "role": user["role"],
-                "organization_id": user["organization_id"]
+                "organization_id": user.get("organization_id")
             }
         }
     except HTTPException:

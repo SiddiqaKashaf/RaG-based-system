@@ -1,36 +1,101 @@
 # backend/main.py
 from fastapi import FastAPI, HTTPException, Depends, Security, File, UploadFile, Form, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 import psycopg2
+
 from psycopg2.extras import RealDictCursor
-from typing import Generator, Optional
+from typing import Optional
 import shutil
-import imghdr
+import io
 import re
-import jwt
-from jwt import ExpiredSignatureError, InvalidTokenError
 import os
 import json
 # Import your auth router
-from .routes import loginPage, signupPage, profilePage, analyticsDashboard, uploadBooksPage, notificationPage, userManagement, chatRoutes
-from .database.db import init_db
-from .config import settings
+from backend.routes import loginPage, signupPage, profilePage, analyticsDashboard, uploadBooksPage, userManagement, chatRoutes, contactPage, homePage, rag_routes, debug_routes
+from backend.config import settings
+from backend.auth_utils import get_current_user, get_db, verify_admin_token
+from PIL import Image
 
 
 app = FastAPI()
 
-# Configure CORS
+# Configure CORS - Permissive settings for development
 print("CORS Origins:", settings.CORS_ORIGINS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "http://0.0.0.0:3000",
+        "http://0.0.0.0:5173",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
-    expose_headers=["*"]
+    expose_headers=["*"],
+    max_age=3600
 )
+
+# Add preflight OPTIONS handler - must be before middleware
+@app.options("/{full_path:path}")
+async def preflight_handler(full_path: str):
+    """Handle preflight CORS requests"""
+    return Response(
+        status_code=200,
+        headers={
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Origin',
+            'Access-Control-Max-Age': '3600',
+        }
+    )
+
+
+# Safety net: ensure responses include CORS header when middleware/route errors occur.
+@app.middleware("http")
+async def ensure_cors_header(request, call_next):
+    # Get the origin from the request
+    origin = request.headers.get('origin')
+    
+    # For OPTIONS requests (preflight), respond early with CORS headers
+    if request.method == "OPTIONS":
+        return Response(
+            status_code=200,
+            headers={
+                'Access-Control-Allow-Origin': origin or '*',
+                'Access-Control-Allow-Credentials': 'true',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS, PATCH',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Origin',
+                'Access-Control-Max-Age': '3600',
+            }
+        )
+    
+    # Process the request
+    try:
+        response = await call_next(request)
+    except Exception as e:
+        # Return error response with CORS headers
+        response = Response(
+            content=str(e),
+            status_code=500,
+        )
+    
+    # Add CORS headers to all responses
+    if origin:
+        response.headers['Access-Control-Allow-Origin'] = origin
+    else:
+        response.headers['Access-Control-Allow-Origin'] = '*'
+    
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, Origin'
+    
+    return response
 
 # Include routers
 app.include_router(loginPage.router, prefix="/api", tags=["auth"])
@@ -38,9 +103,12 @@ app.include_router(signupPage.router, prefix="/api", tags=["auth"])
 app.include_router(profilePage.router, prefix="/api", tags=["profile"])
 app.include_router(analyticsDashboard.router, prefix="/api", tags=["analytics"])
 app.include_router(uploadBooksPage.router, prefix="/api", tags=["knowledge"])
-app.include_router(notificationPage.router, prefix="/api", tags=["activities"])
 app.include_router(userManagement.router, prefix="/api", tags=["user management"])
 app.include_router(chatRoutes.router, prefix="/api", tags=["chat"])
+app.include_router(rag_routes.router, prefix="/api", tags=["rag"])
+app.include_router(debug_routes.router, prefix="", tags=["internal"])
+app.include_router(contactPage.router, prefix="/api", tags=["contact"])
+app.include_router(homePage.router, prefix="/api", tags=["dashboard"])
 
 # Static files for avatars inside backend folder
 BASE_DIR = os.path.dirname(__file__)
@@ -55,23 +123,6 @@ app.mount(
 
 # JWT secret key
 SECRET_KEY = settings.SECRET_KEY
-
-# Security
-security = HTTPBearer()
-
-def get_db() -> Generator:
-    conn = psycopg2.connect(
-        host=settings.POSTGRES_HOST,
-        database=settings.POSTGRES_DB,
-        user=settings.POSTGRES_USER,
-        password=settings.POSTGRES_PASSWORD,
-        port=settings.POSTGRES_PORT,
-        cursor_factory=RealDictCursor
-    )
-    try:
-        yield conn
-    finally:
-        conn.close()
 
 # Initialize database
 def init_db():
@@ -179,9 +230,202 @@ def init_db():
                 user_id INTEGER NOT NULL REFERENCES users(id),
                 action VARCHAR(255) NOT NULL,
                 target VARCHAR(255) NOT NULL,
+                response_time INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        # Table for contact submissions
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contact_submissions (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                subject VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
+                priority VARCHAR(50) DEFAULT 'normal',
+                user_id INTEGER REFERENCES users(id),
+                organization_id INTEGER REFERENCES organizations(id),
+                status VARCHAR(50) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Table for support tickets
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS support_tickets (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                description TEXT NOT NULL,
+                category VARCHAR(100) NOT NULL,
+                priority VARCHAR(50) DEFAULT 'medium',
+                user_id INTEGER REFERENCES users(id),
+                organization_id INTEGER REFERENCES organizations(id),
+                status VARCHAR(50) DEFAULT 'open',
+                response TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Table for notifications
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id SERIAL PRIMARY KEY,
+                type VARCHAR(100) NOT NULL,
+                message TEXT NOT NULL,
+                description TEXT,
+                priority VARCHAR(50) DEFAULT 'medium',
+                user_id INTEGER REFERENCES users(id),
+                organization_id INTEGER REFERENCES organizations(id),
+                reference_id INTEGER,
+                reference_type VARCHAR(100),
+                read_status BOOLEAN DEFAULT FALSE,
+                archived BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Table for analytics documents (saved uploaded files for analytics)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS analytics_documents (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                filename VARCHAR(255) NOT NULL,
+                document_data JSONB NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id)
+            )
+        """)
+
+        # Add settings column to organizations table if it doesn't exist
+        cursor.execute("""
+            ALTER TABLE organizations 
+            ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '{}',
+            ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        """)
+
+        # Add response_time column to activities table if it doesn't exist
+        cursor.execute("""
+            ALTER TABLE activities 
+            ADD COLUMN IF NOT EXISTS response_time INTEGER DEFAULT 0
+        """)
+
+        # Create chat_history table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS chat_history (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                question TEXT,
+                answer TEXT,
+                context VARCHAR(50),
+                language VARCHAR(10),
+                sources JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Create chat_sessions table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS chat_sessions (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(36) UNIQUE,
+                user_id INTEGER REFERENCES users(id),
+                title VARCHAR(255),
+                context VARCHAR(50),
+                messages JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # RAG Advanced System Tables (PostgreSQL-compatible)
+        # Namespaced table names (`rag_`) to avoid collisions with application documents
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rag_documents (
+                document_id VARCHAR(36) PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                filename VARCHAR(255) NOT NULL,
+                file_type VARCHAR(20),
+                file_size INTEGER,
+                total_chunks INTEGER DEFAULT 0,
+                total_tokens INTEGER DEFAULT 0,
+                upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                processing_status VARCHAR(50) DEFAULT 'pending',
+                error_message TEXT,
+                embedding_model VARCHAR(100) DEFAULT 'all-MiniLM-L6-v2'
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_rag_doc_user ON rag_documents(user_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_rag_doc_status ON rag_documents(processing_status)")
+
+        # Document chunks table (RAG)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rag_document_chunks (
+                chunk_id VARCHAR(36) PRIMARY KEY,
+                document_id VARCHAR(36) NOT NULL,
+                content TEXT NOT NULL,
+                chunk_index INTEGER,
+                start_char INTEGER,
+                end_char INTEGER,
+                tokens_count INTEGER,
+                metadata JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (document_id) REFERENCES rag_documents(document_id) ON DELETE CASCADE
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_rag_chunk_doc ON rag_document_chunks(document_id)")
+
+        # Embeddings table (RAG) - store as BYTEA
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rag_embeddings (
+                embedding_id VARCHAR(36) PRIMARY KEY,
+                chunk_id VARCHAR(36) NOT NULL,
+                document_id VARCHAR(36) NOT NULL,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                embedding BYTEA NOT NULL,
+                embedding_model VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (chunk_id) REFERENCES rag_document_chunks(chunk_id) ON DELETE CASCADE
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_rag_emb_user_doc ON rag_embeddings(user_id, document_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_rag_emb_chunk ON rag_embeddings(chunk_id)")
+
+        # RAG chat sessions
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rag_chat_sessions (
+                session_id VARCHAR(36) PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                title VARCHAR(255),
+                document_ids JSONB,
+                total_messages INTEGER DEFAULT 0,
+                total_tokens INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_rag_session_user ON rag_chat_sessions(user_id)")
+
+        # RAG chat messages
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rag_chat_messages (
+                message_id VARCHAR(36) PRIMARY KEY,
+                session_id VARCHAR(36) NOT NULL,
+                role VARCHAR(20),
+                content TEXT,
+                retrieved_chunks JSONB,
+                confidence FLOAT,
+                processing_time_ms FLOAT,
+                tokens_used INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (session_id) REFERENCES rag_chat_sessions(session_id) ON DELETE CASCADE
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_msg_session ON rag_chat_messages(session_id)")
 
         conn.commit()
         conn.close()
@@ -194,33 +438,7 @@ async def startup_event():
     """Initialize database on startup"""
     init_db()
 
-# Dependency to get current user
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: psycopg2.extensions.connection = Depends(get_db)
-):
-    try:
-        payload = jwt.decode(credentials.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    except (ExpiredSignatureError, InvalidTokenError):
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-    cursor = db.cursor()
-    cursor.execute("SELECT id, email, name, role FROM users WHERE id = %s", (payload["sub"],))
-    row = cursor.fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {"id": row["id"], "email": row["email"], "name": row["name"] or "", "role": row["role"]}
-
-def verify_admin_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    try:
-        payload = jwt.decode(credentials.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        if payload.get("role", "").lower() != "admin":
-            raise HTTPException(status_code=403, detail="Not authorized")
-        return payload
-    except ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
 
 # Admin-only routes
 @app.get("/admin/users")
@@ -313,7 +531,12 @@ def update_profile(
     if avatar:
         contents = avatar.file.read()
         avatar.file.seek(0)
-        img_type = imghdr.what(None, h=contents)
+        # Validate image using Pillow (imghdr is deprecated)
+        try:
+            image = Image.open(io.BytesIO(contents))
+            img_type = (image.format or "").lower()
+        except Exception:
+            img_type = ""
         if img_type not in ("jpeg", "png", "jpg", "gif"):
             raise HTTPException(status_code=400, detail="Unsupported avatar image type")
 

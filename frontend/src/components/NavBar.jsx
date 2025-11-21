@@ -9,12 +9,9 @@ import {
   FiMessageSquare,
   FiBarChart2,
   FiUsers,
-  FiSettings,
   FiInfo,
   FiPhone,
-  FiBell,
   FiUser,
-  FiFileText,
   FiSun,
   FiMoon
 } from 'react-icons/fi';
@@ -43,19 +40,16 @@ export default function NavBar({
     { name: 'Home', href: '/', icon: FiHome, description: 'Dashboard overview' },
     { name: 'Chatbot', href: '/chatbot', icon: FiMessageSquare, description: 'AI-powered chat assistant' },
     { name: 'Analytics', href: '/analytics', icon: FiBarChart2, description: 'Data insights and reports' },
-    { name: 'Documents', href: '/documents', icon: FiFileText, description: 'Manage your documents' },
     // Users link will be conditionally added below
-    { name: 'Settings', href: '/settings', icon: FiSettings, description: 'System configuration' },
     { name: 'About', href: '/about', icon: FiInfo, description: 'About the system' },
     { name: 'Contact', href: '/contact', icon: FiPhone, description: 'Get in touch' },
-    { name: 'Notifications', href: '/notifications', icon: FiBell, description: 'View notifications' },
   ];
 
   // Conditionally add Users link for admin only
   const adminNavigation = [
-    ...navigation.slice(0, 4),
+    ...navigation.slice(0, 3),
     { name: 'Users', href: '/admin/users', icon: FiUsers, description: 'User management' },
-    ...navigation.slice(4)
+    ...navigation.slice(3)
   ];
 
   const mainLinks = !isLoggedIn

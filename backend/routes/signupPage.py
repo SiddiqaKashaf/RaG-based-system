@@ -3,7 +3,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from pydantic import BaseModel, EmailStr
 import bcrypt
-from ..database.db import get_db
+from backend.database.db import get_db
+
 
 router = APIRouter()
 

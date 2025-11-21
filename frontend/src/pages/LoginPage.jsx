@@ -52,6 +52,7 @@ export default function LoginPage({ onLogin }) {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/80 dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
             required
           />
@@ -61,6 +62,7 @@ export default function LoginPage({ onLogin }) {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white/80 dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400"
               required
             />

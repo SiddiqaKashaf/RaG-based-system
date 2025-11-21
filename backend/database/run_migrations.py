@@ -1,7 +1,7 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
-from ..config import settings
+from backend.config import settings
 
 def run_migrations():
     """Run database migrations"""

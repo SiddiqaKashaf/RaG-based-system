@@ -1,0 +1,100 @@
+Technical Troubleshooting Guide
+
+Common Issues and Solutions:
+
+1. Login Problems:
+- Issue: Cannot log in to system
+- Solutions:
+  * Verify username and password are correct
+  * Check if Caps Lock is enabled
+  * Clear browser cache and cookies
+  * Try incognito/private browsing mode
+  * Reset password if forgotten
+  * Contact IT support if account is locked
+
+2. Network Connectivity Issues:
+- Issue: Cannot connect to internet or company network
+- Solutions:
+  * Check physical cable connections
+  * Restart router/modem
+  * Verify Wi-Fi password is correct
+  * Disable and re-enable network adapter
+  * Run network troubleshooter (Windows) or Network Diagnostics (Mac)
+  * Check firewall settings
+  * Verify VPN connection if working remotely
+
+3. Slow Performance:
+- Issue: Computer or application running slowly
+- Solutions:
+  * Close unnecessary applications
+  * Restart computer
+  * Check available disk space (should have at least 10% free)
+  * Run disk cleanup utility
+  * Check for malware/virus scans
+  * Update software and drivers
+  * Increase RAM if possible
+
+4. Email Issues:
+- Issue: Cannot send or receive emails
+- Solutions:
+  * Check internet connection
+  * Verify email account settings
+  * Check email storage quota
+  * Clear email cache
+  * Try webmail interface
+  * Check spam/junk folder
+  * Verify email server status
+
+5. Printer Problems:
+- Issue: Cannot print documents
+- Solutions:
+  * Check printer is powered on and connected
+  * Verify printer has paper and ink/toner
+  * Check printer queue for errors
+  * Restart print spooler service
+  * Reinstall printer drivers
+  * Check network connection if network printer
+
+6. Software Crashes:
+- Issue: Applications closing unexpectedly
+- Solutions:
+  * Save work frequently
+  * Update software to latest version
+  * Check for conflicting software
+  * Reinstall the application
+  * Check system logs for error messages
+  * Update graphics drivers
+
+7. File Access Issues:
+- Issue: Cannot access shared files or folders
+- Solutions:
+  * Verify network connection
+  * Check file permissions
+  * Confirm correct file path
+  * Check if file is in use by another user
+  * Verify VPN connection if remote
+  * Contact file owner for access
+
+8. Password Reset:
+- Steps to reset password:
+  1. Go to password reset portal
+  2. Enter your email address
+  3. Follow instructions in email
+  4. Create new password meeting requirements
+  5. Log in with new password
+
+Emergency IT Support:
+- Phone: Extension 1234
+- Email: techsupport@organization.com
+- Hours: Monday-Friday, 8:00 AM - 8:00 PM
+- After-hours: Submit ticket via helpdesk portal
+
+For urgent issues, call the IT emergency line: +1-800-IT-HELP
+
+
+
+
+
+
+
+please review the response still it is asking questions in reply. tell me which llm you are using through grok api key. ? please do it again in professional way

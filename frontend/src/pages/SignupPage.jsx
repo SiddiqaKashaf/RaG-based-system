@@ -71,6 +71,7 @@ export default function SignupPage() {
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
+              autoComplete="email"
               className={`w-full px-4 py-2 border ${getComponentClass('border', 'primary')} rounded-lg ${getComponentClass('background', 'card')} ${getComponentClass('text', 'primary')} focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600`}
               required
               placeholder="e.g. johndoe@example.com"
@@ -98,6 +99,7 @@ export default function SignupPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                autoComplete="new-password"
                 className={`w-full px-4 py-2 border ${getComponentClass('border', 'primary')} rounded-lg pr-10 ${getComponentClass('background', 'card')} ${getComponentClass('text', 'primary')} focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600`}
                 required
                 placeholder="Create a strong password"
@@ -118,6 +120,7 @@ export default function SignupPage() {
               type={showPassword ? 'text' : 'password'}
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
               className={`w-full px-4 py-2 border ${getComponentClass('border', 'primary')} rounded-lg ${getComponentClass('background', 'card')} ${getComponentClass('text', 'primary')} focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600`}
               required
               placeholder="Re-enter password"

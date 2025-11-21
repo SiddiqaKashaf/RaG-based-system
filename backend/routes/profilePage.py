@@ -3,8 +3,9 @@ from typing import Optional
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from pydantic import BaseModel
-from ..database.db import get_db
-from .loginPage import get_current_user
+from backend.database.db import get_db
+
+from backend.auth_utils import get_current_user
 
 router = APIRouter()
 

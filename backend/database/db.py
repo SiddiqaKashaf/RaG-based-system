@@ -2,7 +2,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from typing import Generator
 import os
-from ..config import settings
+from backend.config import settings
+
 
 def get_db() -> Generator:
     """Database connection dependency"""

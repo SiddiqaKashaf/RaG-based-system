@@ -20,11 +20,8 @@ import ChatbotPage from './pages/ChatbotPage';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import UserManagementPage from './pages/UserManagementPage';
 import ContactPage from './pages/ContactPage';
-import CompanySettingsPage from './pages/CompanySettingsPage';
 import AboutPage from './pages/AboutPage';
-import NotificationPage from './pages/NotificationPage';
 import ProfilePage from './pages/ProfilePage';
-import DocumentManagementPage from './pages/DocumentManagementPage';
 import PrivateRoute from './components/PrivateRoute';
 import { NavBarProvider, useNavBar } from './contexts/NavBarContext';
 import { ThemeProvider, useTheme } from './theme';
@@ -63,14 +60,11 @@ function MainContent({ loading, isLoggedIn, handleLogin, user }) {
               <Route path="/" element={<PrivateRoute><HomePage user={user} /></PrivateRoute>} />
               <Route path="/chatbot" element={<PrivateRoute><ChatbotPage /></PrivateRoute>} />
               <Route path="/analytics" element={<PrivateRoute><AnalyticsDashboard /></PrivateRoute>} />
-              <Route path="/documents" element={<PrivateRoute><DocumentManagementPage /></PrivateRoute>} />
               <Route path="/admin" element={<PrivateRoute><UserManagementPage /></PrivateRoute>} />
               <Route path="/admin/users" element={<PrivateRoute><UserManagementPage /></PrivateRoute>} />
               <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
-              <Route path="/settings" element={<PrivateRoute><CompanySettingsPage /></PrivateRoute>} />
               <Route path="/about" element={<PrivateRoute><AboutPage /></PrivateRoute>} />
               <Route path="/contact" element={<PrivateRoute><ContactPage /></PrivateRoute>} />
-              <Route path="/notifications" element={<PrivateRoute><NotificationPage /></PrivateRoute>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           )}

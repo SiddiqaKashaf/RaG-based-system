@@ -36,6 +36,12 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
     ]
+    # LLM / external model settings (Grok only)
+    # Set to 'grok' to enable Grok-based synthesis, or leave empty to disable.
+    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER", "grok")
+    GROK_API_KEY: str = os.getenv("GROK_API_KEY", "")
+    GROK_ENDPOINT: str = os.getenv("GROK_ENDPOINT", "")
+    GROK_MODEL: str = os.getenv("GROK_MODEL", "llama-3.1-8b-instant")  # Default model (can be changed to grok-beta, mixtral-8x7b-32768, etc.)
     
     class Config:
         env_file = ".env"

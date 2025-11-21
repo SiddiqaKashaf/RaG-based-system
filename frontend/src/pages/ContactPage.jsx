@@ -14,6 +14,7 @@ import {
   HiOutlineLightBulb
 } from 'react-icons/hi';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 import { useTheme } from '../theme';
 
 export default function ContactPage() {
@@ -108,7 +109,18 @@ export default function ContactPage() {
     setLoading(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await axios.post('http://localhost:8000/api/contact', {
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message,
+        priority: formData.priority
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
       toast.success('Message sent successfully! We\'ll get back to you soon.');
       setFormData({
         name: '',
@@ -119,6 +131,7 @@ export default function ContactPage() {
         category: 'general'
       });
     } catch (error) {
+      console.error('Error submitting contact form:', error);
       toast.error('Failed to send message. Please try again.');
     } finally {
       setLoading(false);
