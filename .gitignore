@@ -14,7 +14,7 @@ node_modules/
 
 # Environments
 .env
-.env.*
+
 
 
 # Build files
